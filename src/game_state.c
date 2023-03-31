@@ -49,21 +49,8 @@ void dbg_print_gamestate(game_state gs)
 
 game_state get_initialized_gamestate() 
 {
-    game_state gs = *(game_state *) malloc(sizeof(game_state));
-    
-
-
-    // set all black bitboards to 0 (otherwise they will be random) 
-    for (int i = 0; i < 7; i++)
-    {
-       gs.black_bitboards[i] &= 0;
-    }
-
-    // ditto for white
-    for (int i = 0; i < 7; i++)
-    {
-        gs.white_bitboards[i] &= 0;
-    }
+    // calloc because bitboard must be all zeroes
+    game_state gs = *(game_state *) calloc(1, sizeof(game_state));
 
     // we won't set full castle rights 
     // because most often we use generate from FEN after this 
