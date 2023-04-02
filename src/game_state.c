@@ -8,43 +8,29 @@
 // extremely verbose way, for debugging only
 void dbg_print_gamestate(game_state gs) 
 {
-    printf("\n*** BLACK PAWNS ***\n");
-    print_bitboard(gs.black_bitboards[PAWN]);
+    printf("\n*** PAWNS ***\n");
+    print_bitboard(gs.bitboards[PAWN]);
 
-    printf("\n*** BLACK ROOK ***\n");
-    print_bitboard(gs.black_bitboards[ROOK]);
+    printf("\n*** ROOKS ***\n");
+    print_bitboard(gs.bitboards[ROOK]);
 
-    printf("\n*** BLACK KNIGHT ***\n");
-    print_bitboard(gs.black_bitboards[KNIGHT]);
+    printf("\n*** KNIGHTS ***\n");
+    print_bitboard(gs.bitboards[KNIGHT]);
 
-    printf("\n*** BLACK BISHOP ***\n");
-    print_bitboard(gs.black_bitboards[BISHOP]);
+    printf("\n*** BISHOPS ***\n");
+    print_bitboard(gs.bitboards[BISHOP]);
 
-    printf("\n*** BLACK QUEEN ***\n");
-    print_bitboard(gs.black_bitboards[QUEEN]);
+    printf("\n*** QUEENS ***\n");
+    print_bitboard(gs.bitboards[QUEEN]);
 
-    printf("\n*** BLACK KING ***\n");
-    print_bitboard(gs.black_bitboards[KING]);
+    printf("\n*** KINGS ***\n");
+    print_bitboard(gs.bitboards[KING]);
 
-    printf("\n*** WHITE PAWNS ***\n");
-    print_bitboard(gs.white_bitboards[PAWN]);
+    printf("\n*** WHITE PIECES ***\n");
+    print_bitboard(gs.bitboards[WHITE]);
 
-    printf("\n*** WHITE ROOK ***\n");
-    print_bitboard(gs.white_bitboards[ROOK]);
-
-    printf("\n*** WHITE KNIGHT ***\n");
-    print_bitboard(gs.white_bitboards[KNIGHT]);
-
-    printf("\n*** WHITE BISHOP ***\n");
-    print_bitboard(gs.white_bitboards[BISHOP]);
-
-    printf("\n*** WHITE QUEEN ***\n");
-    print_bitboard(gs.white_bitboards[QUEEN]);
-
-    printf("\n*** WHITE KING ***\n");
-    print_bitboard(gs.white_bitboards[KING]);
-
-
+    printf("\n*** BLACK PIECES ***\n");
+    print_bitboard(gs.bitboards[BLACK]);
 }
 
 game_state get_initialized_gamestate() 
@@ -91,52 +77,64 @@ game_state gs_from_FEN(char* FEN)
     {
         switch(FEN[index]) {
             
-            case('p') : // black pawn
-                set_bboard_index(&gs.black_bitboards[PAWN], bb_index);
+            case('P') : // pawn white
+                set_bboard_index(&gs.bitboards[PAWN], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
 
-            case('r') : // black rook
-                set_bboard_index(&gs.black_bitboards[ROOK], bb_index);
+            case('p') : // pawn black
+                set_bboard_index(&gs.bitboards[PAWN], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
-            case('n') : // black knight
-                set_bboard_index(&gs.black_bitboards[KNIGHT], bb_index);
+            case('R') : // rook white
+                set_bboard_index(&gs.bitboards[ROOK], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
 
-            case('b') : // black bishop
-                set_bboard_index(&gs.black_bitboards[BISHOP], bb_index);
+            case('r') : // rook black
+                set_bboard_index(&gs.bitboards[ROOK], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
-            case('q') : // black queen
-                set_bboard_index(&gs.black_bitboards[QUEEN], bb_index);
+            case('N') : // knight white
+                set_bboard_index(&gs.bitboards[KNIGHT], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
             
-            case('k') : // black king
-                set_bboard_index(&gs.black_bitboards[KING], bb_index);
+            case('n') : // knight black
+                set_bboard_index(&gs.bitboards[KNIGHT], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
-            case('P') : // white pawn
-                set_bboard_index(&gs.white_bitboards[PAWN], bb_index);
+            case('B') : // bishop white
+                set_bboard_index(&gs.bitboards[BISHOP], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
 
-            case('R') : // white rook
-                set_bboard_index(&gs.white_bitboards[ROOK], bb_index);
+            case('b') : // bishop black
+                set_bboard_index(&gs.bitboards[BISHOP], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
-            case('N') : // white knight
-                set_bboard_index(&gs.white_bitboards[KNIGHT], bb_index);
+            case('Q') : // queen white
+                set_bboard_index(&gs.bitboards[QUEEN], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
 
-            case('B') : // white bishop
-                set_bboard_index(&gs.white_bitboards[BISHOP], bb_index);
+            case('q') : // queen black
+                set_bboard_index(&gs.bitboards[QUEEN], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
-            case('Q') : // white queen
-                set_bboard_index(&gs.white_bitboards[QUEEN], bb_index);
+            case('K') : // king white
+                set_bboard_index(&gs.bitboards[KING], bb_index);
+                set_bboard_index(&gs.bitboards[WHITE], bb_index);
                 break;
 
-            case('K') : // white king
-                set_bboard_index(&gs.white_bitboards[KING], bb_index);
+            case('k') : // king black
+                set_bboard_index(&gs.bitboards[KING], bb_index);
+                set_bboard_index(&gs.bitboards[BLACK], bb_index);
                 break;
 
             case('2') : // all numbers add themselvs - 1 (because we add 1 at end of loop)
