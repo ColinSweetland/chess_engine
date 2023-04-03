@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "game_state.h"
 #include "bitboard.h"
@@ -32,6 +33,13 @@ void dbg_print_gamestate(game_state gs)
     printf("\n*** BLACK PIECES ***\n");
     print_bitboard(gs.bitboards[BLACK]);
 }
+
+/*
+void print_gamestate(game_state gs)
+{
+
+}
+*/
 
 game_state get_initialized_gamestate() 
 {
@@ -75,8 +83,8 @@ game_state gs_from_FEN(char* FEN)
     // board position section
     while(FEN[index] != ' ') 
     {
-        switch(FEN[index]) {
-            
+        switch(FEN[index]) 
+        {
             case('P') : // pawn white
                 set_bboard_index(&gs.bitboards[PAWN], bb_index);
                 set_bboard_index(&gs.bitboards[WHITE], bb_index);
@@ -170,4 +178,90 @@ game_state gs_from_FEN(char* FEN)
 
 
     return gs;
+}
+
+char* FEN_from_gs(game_state gs) 
+{
+    // theoretical max length FEN is like 87 + rounding to be safe
+    char* FEN = calloc(90, sizeof(char));
+
+    // index with : Color + ((Piece - 2) * 2)
+    char* piece_letters = "PpRrNnBbQqKk";
+
+    char* digits = "123456789"; // easier than sprintf & needs less buffer
+
+    int FEN_index = 0; // index in FEN
+
+    int piece_color = 0;
+    int file = 0;
+
+    int is_empty_space = 0;
+    int empty_space_count = 0;
+     
+    // through each bit board index
+    for (int bb_index = 56; bb_index >= 0; bb_index++) 
+    {
+
+        file = bb_index % 8;
+        is_empty_space = 1;
+
+        // go through all bitboards looking for set bit at bb index
+        for(int piece = PAWN; piece <= KING; piece++)
+        {
+            // there is a piece here
+            if (is_set_at_index(gs.bitboards[piece], bb_index)) 
+            {
+                
+                is_empty_space = 0;
+
+                // write the number of empty spaces if we have some
+                if (empty_space_count > 0) {
+                    
+                    FEN[FEN_index] = digits[empty_space_count - 1];
+                    FEN_index += 1;
+
+                    empty_space_count = 0;
+                }
+
+                // if the bit intersects with black, the piece is black, otherwise white
+                piece_color = (((bitboard) pow(2, bb_index)) & gs.bitboards[BLACK]) > 1;
+
+                // write the appropriate piece to the FEN string
+                FEN[FEN_index] = piece_letters[piece_color + ((piece - 2) * 2)];
+                FEN_index += 1;
+            }
+        }
+
+        if (is_empty_space) {
+            empty_space_count += 1;
+        } 
+
+        // last column
+        if (file == 7) 
+        {
+            if (empty_space_count > 0) 
+            {
+            
+                // write the last empty space for the line
+                FEN[FEN_index] = digits[empty_space_count - 1];
+                FEN_index += 1;
+
+                empty_space_count = 0;
+            }
+
+            // add / which means end of row, except on the last row (row 1)
+            if (bb_index != 7)
+            {
+                FEN[FEN_index] = '/';
+                FEN_index += 1;
+            }
+
+            // shift bb index to next row, first entry
+            bb_index -= 16;
+        }
+    }
+
+    // TODO: Create the rest of the FEN string
+
+    return FEN;
 }

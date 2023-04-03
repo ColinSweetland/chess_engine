@@ -6,3 +6,5 @@ void print_bitboard(bitboard b);
 
 // set the bit at the index in b to 1
 void set_bboard_index(bitboard *b, int index);
+
+int is_set_at_index(bitboard b, int index);

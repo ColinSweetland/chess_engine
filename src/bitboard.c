@@ -54,3 +54,8 @@ void set_bboard_index(bitboard *b, int index)
     // a square is the bit represented by 2 to the power of index
     *b |= (bitboard) pow(2, index);
 }
+
+int is_set_at_index(bitboard b, int index) 
+{
+    return (b & (bitboard) pow(2, index)) > 0;
+}
