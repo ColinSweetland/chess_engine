@@ -75,10 +75,6 @@ game_state get_initialized_gamestate()
     return gs;
 }
 
-
-// STARTING FEN
-// rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-
 // Forsyth Edwards Notation is a common string based representation of gamestate for chess
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
@@ -382,6 +378,8 @@ char* FEN_from_gs(game_state gs)
     // --- FULL MOVE COUNTER ---
     FEN_index += sprintf(FEN + FEN_index, "%d", gs.full_move_counter);
     FEN[FEN_index] = ' ';
+
+    // should we truncate the string somehow?
 
     return FEN;
 }
