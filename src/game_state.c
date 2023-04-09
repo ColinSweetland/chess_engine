@@ -32,6 +32,18 @@ void dbg_print_gamestate(game_state gs)
 
     printf("\n*** BLACK PIECES ***\n");
     print_bitboard(gs.bitboards[BLACK]);
+
+    printf("\n*** OTHER DATA ***\n");
+    printf("CASTLE RIGHTS\n");
+    printf("WHITE KINGSIDE: %d\n",(gs.castle_rights & WHITE_KINGSIDE) > 0);
+    printf("WHITE QUEENSIDE: %d\n",(gs.castle_rights & WHITE_QUEENSIDE) > 0);
+    printf("BLACK KINGSIDE: %d\n",(gs.castle_rights & BLACK_KINGSIDE) > 0);
+    printf("BLACK QUEENSIDE: %d\n",(gs.castle_rights & BLACK_QUEENSIDE) > 0);
+
+    printf("EN PASSANTE TARGET: %d\n",gs.en_passante_target);
+    printf("TO MOVE: %d\n", gs.side_to_move);
+    printf("FULL MOVE COUNTER: %d\n", gs.full_move_counter);
+    printf("REVERSIBLE MOVE COUNTER: %d\n", gs.reversible_move_counter);
 }
 
 /*
@@ -52,7 +64,7 @@ game_state get_initialized_gamestate()
     gs.castle_rights = 0;
 
     // not implemented
-    gs.EN_PASSANTE = -1;
+    gs.en_passante_target = -1;
 
     gs.full_move_counter = 1;
 
@@ -74,16 +86,16 @@ game_state gs_from_FEN(char* FEN)
 {
     game_state gs = get_initialized_gamestate();
 
-    int index = 0;
+    char* FEN_cptr = FEN;
 
     // Fen strings start at top left position,
     // AKA index 56
     int bb_index = 8 * 7;
         
     // board position section
-    while(FEN[index] != ' ') 
+    while(*FEN_cptr != ' ') 
     {
-        switch(FEN[index]) 
+        switch(*FEN_cptr) 
         {
             case('P') : // pawn white
                 set_bboard_index(&gs.bitboards[PAWN], bb_index);
@@ -173,22 +185,77 @@ game_state gs_from_FEN(char* FEN)
         }
 
         bb_index += 1;
-        index += 1;
+        FEN_cptr += 1;
+    }
+    
+    FEN_cptr++; // skip space
+
+    // ---- which side moves ----
+    gs.side_to_move = *FEN_cptr == 'b';
+    
+    FEN_cptr += 2; // first char of next section
+
+    // ---- castling rights ----
+    // '-' indicates nobody can castle
+    if (*FEN_cptr != '-')
+    {
+        // space indicates end of section
+        while(*FEN_cptr != ' ')
+        {
+            switch(*FEN_cptr)
+            {
+                case('K') :
+                    gs.castle_rights |= WHITE_KINGSIDE;
+                    break;
+                case('Q') :
+                    gs.castle_rights |= WHITE_QUEENSIDE;
+                    break;
+                case('k') :
+                    gs.castle_rights |= BLACK_KINGSIDE;
+                    break;
+                case('q') :
+                    gs.castle_rights |= BLACK_QUEENSIDE;
+                    break;
+            }
+
+            FEN_cptr++;
+        }
+    }
+ 
+    FEN_cptr++; // skip space
+
+    // ---- EN PASSANTE TARGET SQUARE ----
+    // '-' indicates no enpassante available
+    if (*FEN_cptr != '-') 
+    {
+        // FILE LETTER
+        gs.en_passante_target = *FEN_cptr - 'a';
+
+        // RANK NUM
+        FEN_cptr++;
+        gs.en_passante_target += (*FEN_cptr - '1') * 8;
     }
 
+    FEN_cptr += 2;
+
+    // ---- REVERSIBLE or HALF MOVE COUNTER ----
+    gs.reversible_move_counter = (int) strtol(FEN_cptr, &FEN_cptr, 10);
+
+    // ---- FULL MOVE COUNTER ----
+    gs.full_move_counter = (int) strtol(FEN_cptr, &FEN_cptr, 10);
 
     return gs;
 }
 
 char* FEN_from_gs(game_state gs) 
 {
-    // theoretical max length FEN is like 87 + rounding to be safe
+    // theoretical max length FEN is like 87 (according to stack overflow) + rounding to extra safe
     char* FEN = calloc(90, sizeof(char));
 
+    // "Lookup tables"
     // index with : Color + ((Piece - 2) * 2)
     char* piece_letters = "PpRrNnBbQqKk";
-
-    char* digits = "123456789"; // easier than sprintf & needs less buffer
+    char* side_to_move = "wb";
 
     int FEN_index = 0; // index in FEN
 
@@ -198,6 +265,7 @@ char* FEN_from_gs(game_state gs)
     int is_empty_space = 0;
     int empty_space_count = 0;
      
+    // ---- PIECES ----
     // through each bit board index
     for (int bb_index = 56; bb_index >= 0; bb_index++) 
     {
@@ -205,10 +273,10 @@ char* FEN_from_gs(game_state gs)
         file = bb_index % 8;
         is_empty_space = 1;
 
-        // go through all bitboards looking for set bit at bb index
+        // go through all piece bitboards looking for set bit at bb index
         for(int piece = PAWN; piece <= KING; piece++)
         {
-            // there is a piece here
+            //if there is a piece at the index
             if (is_set_at_index(gs.bitboards[piece], bb_index)) 
             {
                 
@@ -217,8 +285,7 @@ char* FEN_from_gs(game_state gs)
                 // write the number of empty spaces if we have some
                 if (empty_space_count > 0) {
                     
-                    FEN[FEN_index] = digits[empty_space_count - 1];
-                    FEN_index += 1;
+                    FEN[FEN_index++] = empty_space_count + '0';
 
                     empty_space_count = 0;
                 }
@@ -227,13 +294,12 @@ char* FEN_from_gs(game_state gs)
                 piece_color = (((bitboard) pow(2, bb_index)) & gs.bitboards[BLACK]) > 1;
 
                 // write the appropriate piece to the FEN string
-                FEN[FEN_index] = piece_letters[piece_color + ((piece - 2) * 2)];
-                FEN_index += 1;
+                FEN[FEN_index++] = piece_letters[piece_color + ((piece - 2) * 2)];
             }
         }
 
         if (is_empty_space) {
-            empty_space_count += 1;
+            empty_space_count++;
         } 
 
         // last column
@@ -243,17 +309,15 @@ char* FEN_from_gs(game_state gs)
             {
             
                 // write the last empty space for the line
-                FEN[FEN_index] = digits[empty_space_count - 1];
-                FEN_index += 1;
-
+                FEN[FEN_index++] = empty_space_count + '0';
+                
                 empty_space_count = 0;
             }
 
             // add / which means end of row, except on the last row (row 1)
             if (bb_index != 7)
             {
-                FEN[FEN_index] = '/';
-                FEN_index += 1;
+                FEN[FEN_index++] = '/';
             }
 
             // shift bb index to next row, first entry
@@ -261,7 +325,63 @@ char* FEN_from_gs(game_state gs)
         }
     }
 
-    // TODO: Create the rest of the FEN string
+    // --- SIDE TO MOVE ---
+    FEN[FEN_index++] = ' ';
+    FEN[FEN_index++] = side_to_move[gs.side_to_move];
+    FEN[FEN_index++] = ' ';
+
+    // --- CASTLE RIGHTS ---
+    if(gs.castle_rights == 0) 
+    {
+        FEN[FEN_index++] = '-';
+    } 
+    else 
+    {
+        if(gs.castle_rights & WHITE_KINGSIDE)
+        {
+            FEN[FEN_index++] = 'K';
+        }
+        if(gs.castle_rights & WHITE_QUEENSIDE)
+        {
+            FEN[FEN_index++] = 'Q';
+        }
+        if(gs.castle_rights & BLACK_KINGSIDE)
+        {
+            FEN[FEN_index++] = 'k';
+        }
+        if(gs.castle_rights & BLACK_QUEENSIDE)
+        {
+            FEN[FEN_index++] = 'q';
+        }
+    }
+
+    // --- EN PASSANTE ---
+
+    FEN[FEN_index++] = ' ';
+    
+    // no enpassante available
+    if (gs.en_passante_target < 0) 
+    {
+        FEN[FEN_index++] = '-';
+    }
+    else 
+    {
+        // FILE
+        FEN[FEN_index++] = (gs.en_passante_target % 8) + 'a';
+        // RANK
+        FEN[FEN_index++] = gs.en_passante_target / 8 + '1';
+    }
+
+    FEN[FEN_index++] = ' ';
+
+    // --- HALF/REVERSIBLE MOVES --- 
+    // returns chars written
+    FEN_index += sprintf(FEN + FEN_index, "%d", gs.reversible_move_counter);
+    FEN[FEN_index++] = ' ';
+
+    // --- FULL MOVE COUNTER ---
+    FEN_index += sprintf(FEN + FEN_index, "%d", gs.full_move_counter);
+    FEN[FEN_index] = ' ';
 
     return FEN;
 }

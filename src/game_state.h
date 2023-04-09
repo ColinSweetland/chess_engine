@@ -8,7 +8,7 @@ typedef enum
 
 typedef enum 
 {
-    PAWN = 2, //start at two because index [0] [1] represent color, the enum above
+    PAWN = 2, //start at two because index 0 & 1 represent color, the enum above
     ROOK,
     KNIGHT,
     BISHOP,
@@ -27,8 +27,8 @@ typedef enum
 typedef struct
 {
     bitboard bitboards[8];    
-    int castle_rights;
-    int EN_PASSANTE;            // google it
+    char castle_rights;
+    int en_passante_target;            // google it
     int reversible_move_counter;
     int full_move_counter;
     COLOR side_to_move;
