@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <ctype.h>
 
 #include "game_state.h"
 #include "bitboard.h"
@@ -45,12 +46,70 @@ void dbg_print_gamestate(game_state *gs)
     printf("REVERSIBLE MOVE COUNTER: %d\n", gs->reversible_move_counter);
 }
 
-/*
-void print_gamestate(game_state gs)
+
+void print_gamestate(game_state *gs)
 {
+    char *FEN = FEN_from_gs(gs);
+    int FEN_index = 0;
+
+    // print out 8 rows of pieces
+    for(int row = 0; row < 8; row++)
+    {
+
+        printf("\n%d\t", 8 - row); // print row # label
+
+        // each row is until / or space (last row)
+        while(FEN[FEN_index] != '/' && FEN[FEN_index] != ' ')
+        {
+
+            // if it's a space #, put that many .
+            if(isdigit(FEN[FEN_index]))
+            {
+                for(int spaces = FEN[FEN_index] - '0'; spaces > 0; spaces--)
+                {
+                    printf(" . ");
+                }
+            } 
+            else // put the character piece
+            {
+                printf(" %c ", FEN[FEN_index]);
+            }
+
+            FEN_index++;
+        } 
+
+        // print other game info
+        switch(row)
+        {
+            case(1) :
+                printf("\tFull Moves: %d Rev Moves: %d",gs->full_move_counter,gs->reversible_move_counter);
+                break;
+            case(3) :
+                printf("\tCastling: %c%c%c%c",
+                    gs->castle_rights &  WHITE_KINGSIDE ? 'K' : ' ', 
+                    gs->castle_rights & WHITE_QUEENSIDE ? 'Q' : ' ', 
+                    gs->castle_rights &  BLACK_KINGSIDE ? 'k' : ' ', 
+                    gs->castle_rights & BLACK_QUEENSIDE ? 'q' : ' '
+                );
+                break;
+            case(5) : // we should fix this to print as coordinate like c6
+                printf("\tEn Passante Target: %d", gs->en_passante_target); 
+                break;
+            case(7) :
+                printf("\t%s to move", gs->side_to_move ? "Black" : "White");
+                break;
+        }
+
+
+        FEN_index++;
+    }
+
+    // print file label
+    printf("\n\n\t a  b  c  d  e  f  g  h\n");
+
 
 }
-*/
+
 
 game_state get_initialized_gamestate() 
 {

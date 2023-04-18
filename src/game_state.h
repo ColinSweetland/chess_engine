@@ -45,6 +45,5 @@ char* FEN_from_gs(game_state *gs);
 
 void dbg_print_gamestate(game_state *gs);
 
-
-//void print_gamestate(game_state gs);
+void print_gamestate(game_state *gs);
 
