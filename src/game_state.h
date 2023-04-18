@@ -39,11 +39,11 @@ typedef struct
 // this is the default values set
 game_state get_initialized_gamestate();
 
-game_state gs_from_FEN(char* FEN);
+game_state gs_from_FEN(char *FEN);
 
-char* FEN_from_gs(game_state gs);
+char* FEN_from_gs(game_state *gs);
 
-void dbg_print_gamestate(game_state gs);
+void dbg_print_gamestate(game_state *gs);
 
 
 //void print_gamestate(game_state gs);

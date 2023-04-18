@@ -5,45 +5,44 @@
 #include "game_state.h"
 #include "bitboard.h"
 
-// prints the gamestate (currently only piece info) in a 
-// extremely verbose way, for debugging only
-void dbg_print_gamestate(game_state gs) 
+// prints the gamestate in an extremely verbose way, for debugging only
+void dbg_print_gamestate(game_state *gs) 
 {
     printf("\n*** PAWNS ***\n");
-    print_bitboard(gs.bitboards[PAWN]);
+    print_bitboard(gs->bitboards[PAWN]);
 
     printf("\n*** ROOKS ***\n");
-    print_bitboard(gs.bitboards[ROOK]);
+    print_bitboard(gs->bitboards[ROOK]);
 
     printf("\n*** KNIGHTS ***\n");
-    print_bitboard(gs.bitboards[KNIGHT]);
+    print_bitboard(gs->bitboards[KNIGHT]);
 
     printf("\n*** BISHOPS ***\n");
-    print_bitboard(gs.bitboards[BISHOP]);
+    print_bitboard(gs->bitboards[BISHOP]);
 
     printf("\n*** QUEENS ***\n");
-    print_bitboard(gs.bitboards[QUEEN]);
+    print_bitboard(gs->bitboards[QUEEN]);
 
     printf("\n*** KINGS ***\n");
-    print_bitboard(gs.bitboards[KING]);
+    print_bitboard(gs->bitboards[KING]);
 
     printf("\n*** WHITE PIECES ***\n");
-    print_bitboard(gs.bitboards[WHITE]);
+    print_bitboard(gs->bitboards[WHITE]);
 
     printf("\n*** BLACK PIECES ***\n");
-    print_bitboard(gs.bitboards[BLACK]);
+    print_bitboard(gs->bitboards[BLACK]);
 
     printf("\n*** OTHER DATA ***\n");
     printf("CASTLE RIGHTS\n");
-    printf("WHITE KINGSIDE: %d\n",(gs.castle_rights & WHITE_KINGSIDE) > 0);
-    printf("WHITE QUEENSIDE: %d\n",(gs.castle_rights & WHITE_QUEENSIDE) > 0);
-    printf("BLACK KINGSIDE: %d\n",(gs.castle_rights & BLACK_KINGSIDE) > 0);
-    printf("BLACK QUEENSIDE: %d\n",(gs.castle_rights & BLACK_QUEENSIDE) > 0);
+    printf("WHITE KINGSIDE: %d\n",(gs->castle_rights & WHITE_KINGSIDE) > 0);
+    printf("WHITE QUEENSIDE: %d\n",(gs->castle_rights & WHITE_QUEENSIDE) > 0);
+    printf("BLACK KINGSIDE: %d\n",(gs->castle_rights & BLACK_KINGSIDE) > 0);
+    printf("BLACK QUEENSIDE: %d\n",(gs->castle_rights & BLACK_QUEENSIDE) > 0);
 
-    printf("EN PASSANTE TARGET: %d\n",gs.en_passante_target);
-    printf("TO MOVE: %d\n", gs.side_to_move);
-    printf("FULL MOVE COUNTER: %d\n", gs.full_move_counter);
-    printf("REVERSIBLE MOVE COUNTER: %d\n", gs.reversible_move_counter);
+    printf("EN PASSANTE TARGET: %d\n",gs->en_passante_target);
+    printf("TO MOVE: %d\n", gs->side_to_move);
+    printf("FULL MOVE COUNTER: %d\n", gs->full_move_counter);
+    printf("REVERSIBLE MOVE COUNTER: %d\n", gs->reversible_move_counter);
 }
 
 /*
@@ -243,7 +242,7 @@ game_state gs_from_FEN(char* FEN)
     return gs;
 }
 
-char* FEN_from_gs(game_state gs) 
+char* FEN_from_gs(game_state *gs) 
 {
     // theoretical max length FEN is like 87 (according to stack overflow) + rounding to extra safe
     char* FEN = calloc(90, sizeof(char));
@@ -273,7 +272,7 @@ char* FEN_from_gs(game_state gs)
         for(int piece = PAWN; piece <= KING; piece++)
         {
             //if there is a piece at the index
-            if (is_set_at_index(gs.bitboards[piece], bb_index)) 
+            if (is_set_at_index(gs->bitboards[piece], bb_index)) 
             {
                 
                 is_empty_space = 0;
@@ -287,7 +286,7 @@ char* FEN_from_gs(game_state gs)
                 }
 
                 // if the bit intersects with black, the piece is black, otherwise white
-                piece_color = (((bitboard) pow(2, bb_index)) & gs.bitboards[BLACK]) > 1;
+                piece_color = (((bitboard) pow(2, bb_index)) & gs->bitboards[BLACK]) > 1;
 
                 // write the appropriate piece to the FEN string
                 FEN[FEN_index++] = piece_letters[piece_color + ((piece - 2) * 2)];
@@ -323,29 +322,29 @@ char* FEN_from_gs(game_state gs)
 
     // --- SIDE TO MOVE ---
     FEN[FEN_index++] = ' ';
-    FEN[FEN_index++] = side_to_move[gs.side_to_move];
+    FEN[FEN_index++] = side_to_move[gs->side_to_move];
     FEN[FEN_index++] = ' ';
 
     // --- CASTLE RIGHTS ---
-    if(gs.castle_rights == 0) 
+    if(gs->castle_rights == 0) 
     {
         FEN[FEN_index++] = '-';
     } 
     else 
     {
-        if(gs.castle_rights & WHITE_KINGSIDE)
+        if(gs->castle_rights & WHITE_KINGSIDE)
         {
             FEN[FEN_index++] = 'K';
         }
-        if(gs.castle_rights & WHITE_QUEENSIDE)
+        if(gs->castle_rights & WHITE_QUEENSIDE)
         {
             FEN[FEN_index++] = 'Q';
         }
-        if(gs.castle_rights & BLACK_KINGSIDE)
+        if(gs->castle_rights & BLACK_KINGSIDE)
         {
             FEN[FEN_index++] = 'k';
         }
-        if(gs.castle_rights & BLACK_QUEENSIDE)
+        if(gs->castle_rights & BLACK_QUEENSIDE)
         {
             FEN[FEN_index++] = 'q';
         }
@@ -356,30 +355,31 @@ char* FEN_from_gs(game_state gs)
     FEN[FEN_index++] = ' ';
     
     // no enpassante available
-    if (gs.en_passante_target < 0) 
+    if (gs->en_passante_target < 0) 
     {
         FEN[FEN_index++] = '-';
     }
     else 
     {
         // FILE
-        FEN[FEN_index++] = (gs.en_passante_target % 8) + 'a';
+        FEN[FEN_index++] = (gs->en_passante_target % 8) + 'a';
         // RANK
-        FEN[FEN_index++] = gs.en_passante_target / 8 + '1';
+        FEN[FEN_index++] = gs->en_passante_target / 8 + '1';
     }
 
     FEN[FEN_index++] = ' ';
 
     // --- HALF/REVERSIBLE MOVES --- 
     // returns chars written
-    FEN_index += sprintf(FEN + FEN_index, "%d", gs.reversible_move_counter);
+    FEN_index += sprintf(FEN + FEN_index, "%d", gs->reversible_move_counter);
     FEN[FEN_index++] = ' ';
 
     // --- FULL MOVE COUNTER ---
-    FEN_index += sprintf(FEN + FEN_index, "%d", gs.full_move_counter);
-    FEN[FEN_index] = ' ';
-
-    // should we truncate the string somehow?
+    FEN_index += sprintf(FEN + FEN_index, "%d", gs->full_move_counter);
+    
+    // truncate string
+    // This is like a pseudo-leak (leaves a small unused portion of the string)
+    FEN[FEN_index] = '\0';
 
     return FEN;
 }
