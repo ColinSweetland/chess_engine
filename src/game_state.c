@@ -84,17 +84,25 @@ void print_gamestate(game_state *gs)
             case(1) :
                 printf("\tFull Moves: %d Rev Moves: %d",gs->full_move_counter,gs->reversible_move_counter);
                 break;
+            
             case(3) :
-                printf("\tCastling: %c%c%c%c",
-                    gs->castle_rights &  WHITE_KINGSIDE ? 'K' : ' ', 
-                    gs->castle_rights & WHITE_QUEENSIDE ? 'Q' : ' ', 
-                    gs->castle_rights &  BLACK_KINGSIDE ? 'k' : ' ', 
-                    gs->castle_rights & BLACK_QUEENSIDE ? 'q' : ' '
-                );
+                printf("\tCastling: ");
+                if (gs->castle_rights &  WHITE_KINGSIDE)
+                    putchar('K');
+                if (gs->castle_rights &  WHITE_QUEENSIDE)
+                    putchar('Q');  
+                if (gs->castle_rights &  BLACK_KINGSIDE)
+                    putchar('k');
+                if (gs->castle_rights &  BLACK_QUEENSIDE)
+                    putchar('q');
+                if (gs->castle_rights == 0)
+                    putchar('-');
                 break;
+            
             case(5) : // we should fix this to print as coordinate like c6
                 printf("\tEn Passante Target: %d", gs->en_passante_target); 
                 break;
+            
             case(7) :
                 printf("\t%s to move", gs->side_to_move ? "Black" : "White");
                 break;
