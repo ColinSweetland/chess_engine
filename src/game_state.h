@@ -8,6 +8,7 @@ typedef enum
 
 typedef enum 
 {
+    NONE_PIECE = -1,
     PAWN = 2, //start at two because index 0 & 1 represent color, the enum above
     ROOK,
     KNIGHT,
@@ -34,6 +35,27 @@ typedef struct
     COLOR side_to_move;
 } game_state;
 
+
+typedef struct
+{
+    // these 3 are all that is needed to uniquely identify moves
+    int from_square;
+    int to_square;
+
+    PIECE promotion; 
+
+    /* We may want more info depending on our implementation of other stuff. 
+    PIECE captured;
+    int is_en_passante;
+    int flags;
+    */
+
+} chess_move;
+
+// parse move in long algebraic notation
+chess_move parse_move(char *movestring);
+
+
 // returns an initialized gamestate
 // this is NOT the initial game position
 // this is the default values set
@@ -46,4 +68,3 @@ char* FEN_from_gs(game_state *gs);
 void dbg_print_gamestate(game_state *gs);
 
 void print_gamestate(game_state *gs);
-

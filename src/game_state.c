@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "game_state.h"
 #include "bitboard.h"
@@ -117,6 +118,65 @@ void print_gamestate(game_state *gs)
 
 
 }
+
+int is_within_inc(int num, int low, int high)
+{
+    if (num < low)
+        return 0;
+    if (num > high)
+        return 0;
+    return 1;
+}
+
+chess_move parse_move(char *movestring)
+{
+    char *promotions = "RNBQ"; // all promotable pieces
+    chess_move move = {0, 0, NONE_PIECE};
+    int idx = 0;
+
+    // FROM SQUARE
+    if (!is_within_inc(movestring[idx], 'a', 'h') || !is_within_inc(movestring[idx + 1], '1', '8'))
+    {
+        goto PARSE_ERR;
+    } 
+
+    move.from_square = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+
+    idx += 2;
+
+    // TO SQUARE
+    if (!is_within_inc(movestring[idx], 'a', 'h') || !is_within_inc(movestring[idx + 1], '1', '8'))
+    {
+        goto PARSE_ERR;
+    }
+
+    move.to_square = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+
+    idx += 2;
+
+    // PROMOTION
+    for (int i = 0; i < 4; i++)
+    {
+        if (promotions[i] == movestring[idx])
+        {
+            move.promotion = ROOK + i;
+        }
+    }
+
+    // wasn't assigned and it's not a space or NULL string = ERR
+    if (move.promotion == -1 && !(isspace(movestring[idx]) || movestring[idx] == '\0'))
+    {
+        goto PARSE_ERR;
+    }
+    
+    return move;   
+
+    PARSE_ERR :
+    fprintf(stderr,"ERR: CAN'T PARSE MOVE \"%s\" \n",movestring);
+    fprintf(stderr,"EXITING\n");
+    exit(1);
+}
+
 
 
 game_state get_initialized_gamestate() 
