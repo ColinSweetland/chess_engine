@@ -18,16 +18,19 @@ void print_moves(move_list_node *move)
 int main()
 {
     //game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    //game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5K2/P1PP1PPP/RNBQ1B1R w KQkq - 1 2");
-    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
+    //game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
+    //game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
 
-    print_gamestate(&gs);
+    //print_gamestate(&gs);
     
-    bitboard k = bb_pawn_attacks_w(&gs, WHITE);
-
-    print_bb(k);
+    print_bb(bb_king_moves(0, BB_ZERO));
+    print_bb(bb_king_moves(63, BB_ZERO));
+    print_bb(bb_king_moves(5, BB_ZERO));
+    print_bb(bb_king_moves(56, BB_ZERO));
+    print_bb(bb_king_moves(7, BB_ZERO));
+    print_bb(bb_king_moves(8, BB_ZERO));
+    print_bb(bb_king_moves(25, BB_ZERO));
   
-
     printf("Exiting!\n");
     return 0; 
 }

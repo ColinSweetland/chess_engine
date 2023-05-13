@@ -8,7 +8,7 @@
 chess_move parse_move(char *movestring);
 
 // ----- KING MOVES -----
-bitboard bb_king_moves(game_state *gs, COLOR side_to_move);
+bitboard bb_king_moves(int sq, bitboard blockers);
 
 // ----- PAWN MOVES -----
 // 1. Attacks
