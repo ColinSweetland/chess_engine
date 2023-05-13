@@ -1,12 +1,8 @@
-#include <math.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include "bitboard.h"
 
-// bitboards are 64 bits, each bit represents 1 of 64 squares on a chessboard
-typedef uint64_t bitboard;
-
-void print_bitboard(bitboard b)
+void print_bb(bitboard bb)
 {
     //space
     printf("\n");
@@ -17,28 +13,16 @@ void print_bitboard(bitboard b)
     this fits the standard way chess boards are labeled (from white side) */
     for (int rank = 8; rank > 0; rank--)
     {
-
         // rank number label
         printf("%d\t", rank);     
 
         // iterate through files (columns) of the board
         // files are 1 indexed   
-        for (int file = 0; file < 8; file++)
+        for (int file = 1; file <= 8; file++)
         {
+            int square = RANKFILE_TO_SQ(rank, file);
 
-            
-            int square = (rank - 1)*8 + file;
-
-            if ((b & (bitboard) pow(2,square)) > 0) 
-            {
-                printf(" 1");
-            } 
-            else
-            {
-                printf(" 0");
-            }
-            
-            
+            printf(" %d", BB_IS_SET_AT(bb, square));
         }
 
         printf("\n");
@@ -46,16 +30,4 @@ void print_bitboard(bitboard b)
 
     // file info + space
     printf("\n\t a b c d e f g h\n\n");
-}
-
-// set a bit at the specified index 
-void set_bboard_index(bitboard *b, int index)
-{
-    // a square is the bit represented by 2 to the power of index
-    *b |= (bitboard) pow(2, index);
-}
-
-int is_set_at_index(bitboard b, int index) 
-{
-    return (b & (bitboard) pow(2, index)) > 0;
 }
