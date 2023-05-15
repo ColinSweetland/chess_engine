@@ -10,6 +10,9 @@ chess_move parse_move(char *movestring);
 // ----- KING MOVES -----
 bitboard bb_king_moves(int sq, bitboard blockers);
 
+//------ KNIGHT MOVES ---
+bitboard bb_knight_moves(int sq, bitboard blockers);
+
 // ----- PAWN MOVES -----
 // 1. Attacks
 bitboard bb_pawn_attacks_e(game_state *gs, COLOR side_to_move);

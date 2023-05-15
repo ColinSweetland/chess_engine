@@ -28,6 +28,9 @@ typedef enum direction {
 // x -> ~x at idx
 #define BB_TOGGLE(bb, idx) (bb ^= (1ULL << idx))
 
+// bb at a certain square
+#define BB_SQ(sq) (BB_ZERO | (1ULL << sq))
+
 // True if bitboard is set at idx else false
 #define BB_IS_SET_AT(bb, idx) (bool) ((bb & (1ULL << idx)) != BB_ZERO)
 
@@ -46,7 +49,7 @@ typedef enum direction {
 // this can be replaced later if needed
 #define BB_LSB(b) (__builtin_ffsll(b) - 1)
 
-#define GEN_SHIFT(bb, dir) ((dir > 0) ? (bb << dir) : (bb >> (-dir)))
+#define GEN_SHIFT(bb, dir) (((dir) > 0) ? (bb << (dir)) : (bb >> (-(dir))))
 
 // each board row
 #define BB_RANK_1 ((bitboard)0x00000000000000FFULL)

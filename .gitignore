@@ -1,5 +1,5 @@
 *.d
 *.o
-Makefile
 output/
 .vscode/
+obj/

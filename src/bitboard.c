@@ -22,7 +22,7 @@ void print_bb(bitboard bb)
         {
             int square = RANKFILE_TO_SQ(rank, file);
 
-            printf(" %d", BB_IS_SET_AT(bb, square));
+            printf(" %c", BB_IS_SET_AT(bb, square) ? 'X' : '.');
         }
 
         printf("\n");
