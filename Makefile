@@ -15,7 +15,6 @@ DEPS = $(OBJECTS:.o=.d)
 
 # Compile than run the program
 all: $(OUTPUT) run
-	@echo Complete.
 
 # Run the program
 run:

@@ -19,7 +19,6 @@ void print_move(chess_move move)
     );
 }
 
-
 // --------------- GAME STATE ---------------------
 
 static game_state get_gamestate() 
@@ -96,7 +95,7 @@ void print_gamestate(game_state *gs)
                     putchar('-');
                 break;
             
-            case(3) : // we should fix this to print as coordinate like c6
+            case(3) : 
                 if (gs->en_passante_target != -1) 
                 {
                     printf("\tEn Passante Available: %c%c", 
