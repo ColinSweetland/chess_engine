@@ -45,9 +45,23 @@ typedef enum direction {
 #define RANK_CHAR_FROM_SQ(r) (RANK_FROM_SQ(r) + '1' - 1)
 #define FILE_CHAR_FROM_SQ(f) (FILE_FROM_SQ(f) + 'a' - 1) 
  
-//**** GCC BUILTIN ********
-// this can be replaced later if needed
+//**** GCC BUILTINS ********
+// these can be replaced later if needed
 #define BB_LSB(b) (__builtin_ffsll(b) - 1)
+
+// we can use this software implementation of PEXT / PDEP later
+// https://github.com/zwegner/zp7
+
+// returns a bitboard with the lowest bits corresponding to
+// the bits in bb in the positions set in mask
+#define BB_PEXT(bb, mask) ((bitboard) _pext_u64(bb, mask))
+
+// returns a bitboard where lowest bits of bb are moved
+// into positions set in mask
+#define BB_PDEP(bb, mask) ((bitboard) _pdep_u64(bb, mask))
+
+// bit count
+#define BB_POPCNT(bb) (__builtin_popcountll(bb))
 
 #define GEN_SHIFT(bb, dir) (((dir) > 0) ? (bb << (dir)) : (bb >> (-(dir))))
 
@@ -71,6 +85,8 @@ typedef enum direction {
 #define BB_FILE_G ((bitboard)0x4040404040404040ULL)
 #define BB_FILE_H ((bitboard)0x8080808080808080ULL)
 
+// hex print
+#define hprint_bb(b) (printf("0x%016lx\n",b)) 
 void print_bb(bitboard b);
 
 #endif

@@ -1,5 +1,5 @@
 CC		:= gcc
-CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -g -lm -std=c99 -O3 -MMD -MP
+CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -g -lm -mbmi2 -std=c99 -O3 -MMD -MP
 
 SRC		:= src
 OBJ 	:= obj

@@ -38,15 +38,25 @@ void uci_engine_loop()
     }
 }   
 
+void init() 
+{
+    init_rook_tables();
+}
+
 int main()
 {
-    //game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    //game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
-    //game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
 
-    //print_gamestate(&gs);
+    init();
+
+    game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R b KQkq - 1 2");
+    // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
+
+    print_gamestate(&gs);
     
-    uci_engine_loop();
+    bitboard moves = bb_rook_moves(&gs);
+    print_bb(moves);
+    //uci_engine_loop();
 
-    return 0; 
+    return 0;
 }
