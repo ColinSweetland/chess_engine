@@ -7,10 +7,12 @@
 // parse move in long algebraic notation
 chess_move parse_move(char *movestring);
 
-// ----- ROOKS MOVES-----
+// ----- BISHOP MOVES-----
+void init_bishop_tables();
 
-bitboard dumb7fill(int sq, bitboard blockers);
+bitboard bb_bishop_moves(int sq, bitboard blockers);
 
+// ----- ROOK MOVES-----
 void init_rook_tables();
 
 bitboard bb_rook_moves(int sq, bitboard blockers);

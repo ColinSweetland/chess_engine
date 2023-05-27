@@ -86,7 +86,8 @@ typedef enum direction {
 #define BB_FILE_H ((bitboard)0x8080808080808080ULL)
 
 // hex print
-#define hprint_bb(b) (printf("0x%016lx\n",b)) 
+#define hprint_bb(b) (printf("0x%016lx",b)) 
+
 void print_bb(bitboard b);
 
 #endif

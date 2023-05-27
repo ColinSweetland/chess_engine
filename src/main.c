@@ -41,21 +41,25 @@ void uci_engine_loop()
 void init() 
 {
     init_rook_tables();
+    init_bishop_tables();
 }
 
 int main()
 {
     init();
 
-    game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R b KQkq - 1 2");
+    //game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R b KQkq - 1 2");
     // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
+    //uci_engine_loop();
 
     print_gamestate(&gs);
-    
-    bitboard moves = bb_rook_moves(27, gs.bitboards[BLACK] | gs.bitboards[WHITE]);
-    print_bb(moves);
-    //uci_engine_loop();
+
+    bitboard blockers = gs.bitboards[BLACK] | gs.bitboards[WHITE];
+
+    bitboard b_moves = bb_bishop_moves(43, blockers);
+
+    print_bb(b_moves);
 
     return 0;
 }

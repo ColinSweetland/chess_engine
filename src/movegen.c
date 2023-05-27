@@ -67,7 +67,147 @@ chess_move parse_move(char *movestring)
     exit(1);
 }
 
-// ------------------ROOKS-----------------------
+/* Adapted from chessprogramming wiki */
+// used for generating bishop and rook tables
+bitboard dumb7fill(int origin_sq, bitboard blockers, int *dirs)
+{
+    bitboard moves_bb = BB_ZERO;
+    bitboard dirmask = ~BB_ZERO;
+
+    // diri indicates the direction we are filling, and mask to apply (above two tables)
+    for (int diri = 0; diri < 4; diri++)
+    {
+        direction current_dir = dirs[diri];
+
+        switch (current_dir) 
+        {
+            case NORTHEAST:
+            case EAST:
+            case SOUTHEAST:
+                dirmask = e_mask;
+                break;
+            case NORTHWEST:
+            case WEST:
+            case SOUTHWEST:
+                dirmask = w_mask;
+                break;
+            case NORTH:
+            case SOUTH:
+                dirmask = ~BB_ZERO;
+                break;
+        }
+        
+        // empty squares = 1, occupied = 0
+        bitboard prop = ~blockers & dirmask;
+
+        // the square the rook is on
+        bitboard r = BB_SQ(origin_sq);
+
+        // we fill this with valid moves until blocker
+        bitboard flood = BB_ZERO;
+
+        // push rook along dir, until a blocker makes it dissapear
+        while(r)
+        {
+            flood |= r;
+            r = GEN_SHIFT(r, current_dir) & prop;
+        }
+
+        // shift one more time to get attacks/edges
+        flood = GEN_SHIFT(flood, current_dir) & dirmask;
+
+        moves_bb |= flood;
+    }
+
+    return moves_bb;
+}
+
+
+
+// ------------------ BISHOPS -----------------------
+
+// lookup moves [idxlookup[sq] + PEXT(blockers)]
+// we can make this more memory eff later (many elements are copies of eachother)
+// size: ~41kb (8 bytes (bitboard) * 5184 entries)
+static bitboard BISHOP_MOVE_LOOKUP[5184] = {0};
+
+// squares set might contain pieces that block bishop moves
+static const bitboard BISHOP_BLOCKER_MASK[64] = 
+{
+0x0040201008040200, 0x0000402010080400, 0x0000004020100a00,
+0x0000000040221400, 0x0000000002442800, 0x0000000204085000,
+0x0000020408102000, 0x0002040810204000, 0x0020100804020000,
+0x0040201008040000, 0x00004020100a0000, 0x0000004022140000,
+0x0000000244280000, 0x0000020408500000, 0x0002040810200000,
+0x0004081020400000, 0x0010080402000200, 0x0020100804000400,
+0x004020100a000a00, 0x0000402214001400, 0x0000024428002800,
+0x0002040850005000, 0x0004081020002000, 0x0008102040004000,
+0x0008040200020400, 0x0010080400040800, 0x0020100a000a1000,
+0x0040221400142200, 0x0002442800284400, 0x0004085000500800,
+0x0008102000201000, 0x0010204000402000, 0x0004020002040800,
+0x0008040004081000, 0x00100a000a102000, 0x0022140014224000,
+0x0044280028440200, 0x0008500050080400, 0x0010200020100800,
+0x0020400040201000, 0x0002000204081000, 0x0004000408102000,
+0x000a000a10204000, 0x0014001422400000, 0x0028002844020000,
+0x0050005008040200, 0x0020002010080400, 0x0040004020100800,
+0x0000020408102000, 0x0000040810204000, 0x00000a1020400000,
+0x0000142240000000, 0x0000284402000000, 0x0000500804020000,
+0x0000201008040200, 0x0000402010080400, 0x0002040810204000,
+0x0004081020400000, 0x000a102040000000, 0x0014224000000000,
+0x0028440200000000, 0x0050080402000000, 0x0020100804020000,
+0x0040201008040200
+};
+
+// Where you can begin to lookup the move bb for a certain square
+// for example, in a1 we have 63 (2^6 - 1) possible blocker combos,
+// because there are 6 squares where blockers can be
+// so for a2 we start at index 63 (64th element)
+// max = 5184
+static const uint16_t BISHOP_MOVE_START_IDX[64] = 
+{
+       0,    63,    94,   125,   156,   187,   218,   249,
+     312,   343,   374,   405,   436,   467,   498,   529,
+     560,   591,   622,   749,   876,  1003,  1130,  1161,
+    1192,  1223,  1254,  1381,  1892,  2403,  2530,  2561,
+    2592,  2623,  2654,  2781,  3292,  3803,  3930,  3961,
+    3992,  4023,  4054,  4181,  4308,  4435,  4562,  4593,
+    4624,  4655,  4686,  4717,  4748,  4779,  4810,  4841,
+    4872,  4935,  4966,  4997,  5028,  5059,  5090,  5121
+};
+
+bitboard bb_bishop_moves(int sq, bitboard blockers)
+{   
+    bitboard blocker_key = BB_PEXT(blockers, BISHOP_BLOCKER_MASK[sq]);
+    return BISHOP_MOVE_LOOKUP[BISHOP_MOVE_START_IDX[sq] + blocker_key];
+}
+
+void init_bishop_tables()
+{    
+    int dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
+    // iterate over each square
+    for (int curr_sq = 0; curr_sq < 64; curr_sq++)
+    {
+        // blockers can appear in any bit set here
+        bitboard potential_blocker_mask = BISHOP_BLOCKER_MASK[curr_sq];
+
+        // we can have as many blockers as bits set
+        int max_blockers = BB_POPCNT(potential_blocker_mask);
+        
+        // iterate through all combo of blockers in all relevant positions
+        for(bitboard blockers = BB_ZERO; blockers < BB_SQ(max_blockers); blockers++)
+        {
+            // this particular combo
+            bitboard blocker_set = BB_PDEP(blockers, potential_blocker_mask);
+
+            bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
+
+            int table_idx = BISHOP_MOVE_START_IDX[curr_sq] + blockers;
+            BISHOP_MOVE_LOOKUP[table_idx] = moves;
+        }
+    }
+}
+
+// ------------------ ROOKS -----------------------
 
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
@@ -119,59 +259,17 @@ static const uint32_t ROOK_MOVE_START_IDX[64] =
 };
 
 bitboard bb_rook_moves(int sq, bitboard blockers)
-{
-    bitboard blocker_mask = ROOK_BLOCKER_MASK[sq];
-   
-    bitboard blocker_key = BB_PEXT(blockers, blocker_mask);
-
+{   
+    bitboard blocker_key = BB_PEXT(blockers, ROOK_BLOCKER_MASK[sq]);
     return ROOK_MOVE_LOOKUP[ROOK_MOVE_START_IDX[sq] + blocker_key];
-}
-
-/* Adapted from chessprogramming wiki */
-bitboard dumb7fill(int origin_sq, bitboard blockers)
-{
-    int dirs[4] = {NORTH, SOUTH, EAST, WEST};
-    bitboard dirmask[4] = {~BB_ZERO, ~BB_ZERO, ~BB_FILE_A, ~BB_FILE_H};
-
-    bitboard moves_bb = BB_ZERO;
-
-    // diri indicates the direction we are filling, and mask to apply (above two tables)
-    for (int diri = 0; diri < 4; diri++)
-    {
-        direction current_dir = dirs[diri];
-        bitboard current_dirmask = dirmask[diri];
-
-        // empty squares = 1, occupied = 0
-        bitboard prop = ~blockers & current_dirmask;
-
-        // the square the rook is on
-        bitboard r = BB_SQ(origin_sq);
-
-        // we fill this with valid moves until blocker
-        bitboard flood = BB_ZERO;
-
-        // push rook along dir, until a blocker makes it dissapear
-        while(r)
-        {
-            flood |= r;
-            r = GEN_SHIFT(r, current_dir) & prop;
-        }
-
-        // shift one more time to get attacks/edges
-        flood = GEN_SHIFT(flood, current_dir) & dirmask[diri];
-
-        moves_bb |= flood;
-    }
-
-    return moves_bb;
 }
 
 void init_rook_tables()
 {    
+    int dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square
     for (int curr_sq = 0; curr_sq < 64; curr_sq++)
     {
-        
         // blockers can appear in any bit set here
         bitboard potential_blocker_mask = ROOK_BLOCKER_MASK[curr_sq];
 
@@ -184,7 +282,7 @@ void init_rook_tables()
             // this particular combo
             bitboard blocker_set = BB_PDEP(blockers, potential_blocker_mask);
 
-            bitboard moves = dumb7fill(curr_sq, blocker_set);
+            bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
 
             int table_idx = ROOK_MOVE_START_IDX[curr_sq] + blockers;
             ROOK_MOVE_LOOKUP[table_idx] = moves;
