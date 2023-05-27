@@ -290,6 +290,13 @@ void init_rook_tables()
     }
 }
 
+// ------------------QUEENS----------------------
+
+bitboard bb_queen_moves(int sq, bitboard blockers)
+{
+    return bb_rook_moves(sq, blockers) | bb_bishop_moves(sq, blockers);
+}
+
 // ------------------KINGS-----------------------
 
 static const bitboard king_lookup[64] = 

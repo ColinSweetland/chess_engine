@@ -57,7 +57,7 @@ int main()
 
     bitboard blockers = gs.bitboards[BLACK] | gs.bitboards[WHITE];
 
-    bitboard b_moves = bb_bishop_moves(43, blockers);
+    bitboard b_moves = bb_queen_moves(3, blockers) & ~gs.bitboards[WHITE];
 
     print_bb(b_moves);
 

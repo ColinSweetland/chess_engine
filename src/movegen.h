@@ -17,6 +17,10 @@ void init_rook_tables();
 
 bitboard bb_rook_moves(int sq, bitboard blockers);
 
+// ----- QUEEN MOVES -----
+
+bitboard bb_queen_moves(int sq, bitboard blockers);
+
 // ----- KING MOVES -----
 bitboard bb_king_moves(int sq);
 
