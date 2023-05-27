@@ -9,17 +9,17 @@ chess_move parse_move(char *movestring);
 
 // ----- ROOKS MOVES-----
 
-bitboard dumb7fill(int origin_sq, bitboard blockers);
+bitboard dumb7fill(int sq, bitboard blockers);
 
 void init_rook_tables();
 
-bitboard bb_rook_moves(game_state *gs);
+bitboard bb_rook_moves(int sq, bitboard blockers);
 
 // ----- KING MOVES -----
-bitboard bb_king_moves(int sq, bitboard blockers);
+bitboard bb_king_moves(int sq);
 
 //------ KNIGHT MOVES ---
-bitboard bb_knight_moves(int sq, bitboard blockers);
+bitboard bb_knight_moves(int sq);
 
 // ----- PAWN MOVES -----
 // 1. Attacks

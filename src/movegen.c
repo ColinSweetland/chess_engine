@@ -71,7 +71,7 @@ chess_move parse_move(char *movestring)
 
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
-// size: ~800kb (too much)
+// size: ~800kb (8 bytes (bitboard) * 102337 entries)
 static bitboard ROOK_MOVE_LOOKUP[102337] = {0};
 
 // squares set might contain pieces that block rook moves
@@ -118,28 +118,16 @@ static const uint32_t ROOK_MOVE_START_IDX[64] =
     81864,  85959,  88006,  90053,  92100,  94147,  96194,  98241
 };
 
-
-// TODO: make this work properly for multiple rooks
-bitboard bb_rook_moves(game_state *gs)
+bitboard bb_rook_moves(int sq, bitboard blockers)
 {
-    
-    int rook_sq = BB_LSB(gs->bitboards[ROOK] & gs->bitboards[gs->side_to_move]);
-    
-    // no rook on board -> no moves
-    if (rook_sq == -1)
-    {
-        return BB_ZERO;
-    }
-    
-    bitboard occ = gs->bitboards[BLACK] | gs->bitboards[WHITE];
-    
-    bitboard blocker_mask = ROOK_BLOCKER_MASK[rook_sq];
+    bitboard blocker_mask = ROOK_BLOCKER_MASK[sq];
    
-    bitboard blocker_key = BB_PEXT(occ, blocker_mask);
+    bitboard blocker_key = BB_PEXT(blockers, blocker_mask);
 
-    return ROOK_MOVE_LOOKUP[ROOK_MOVE_START_IDX[rook_sq] + blocker_key] & ~gs->bitboards[gs->side_to_move];
+    return ROOK_MOVE_LOOKUP[ROOK_MOVE_START_IDX[sq] + blocker_key];
 }
 
+/* Adapted from chessprogramming wiki */
 bitboard dumb7fill(int origin_sq, bitboard blockers)
 {
     int dirs[4] = {NORTH, SOUTH, EAST, WEST};
@@ -233,9 +221,9 @@ static const bitboard king_lookup[64] =
 };
 
 // The thrill is gone
-bitboard bb_king_moves(int sq, bitboard blockers)
+bitboard bb_king_moves(int sq)
 {
-    return king_lookup[sq] & ~blockers;
+    return king_lookup[sq];
 }
 
 //-------------------KNIGHTS---------------------
@@ -265,9 +253,9 @@ static const bitboard knight_lookup[64] =
     0x0020400000000000ULL
 };
 
-bitboard bb_knight_moves(int sq, bitboard blockers)
+bitboard bb_knight_moves(int sq)
 {
-    return knight_lookup[sq] & ~blockers;
+    return knight_lookup[sq];
 }
 
 

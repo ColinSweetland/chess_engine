@@ -45,7 +45,6 @@ void init()
 
 int main()
 {
-
     init();
 
     game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -54,7 +53,7 @@ int main()
 
     print_gamestate(&gs);
     
-    bitboard moves = bb_rook_moves(&gs);
+    bitboard moves = bb_rook_moves(27, gs.bitboards[BLACK] | gs.bitboards[WHITE]);
     print_bb(moves);
     //uci_engine_loop();
 
