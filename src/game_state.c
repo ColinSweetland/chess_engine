@@ -31,9 +31,6 @@ static game_state get_gamestate()
     // and we would just have to set it to 0 there
     gs.castle_rights = 0;
 
-    // not implemented
-    gs.en_passante_target = -1;
-
     gs.full_move_counter = 1;
 
     gs.side_to_move = WHITE;
@@ -47,6 +44,8 @@ void print_gamestate(game_state *gs)
 {
     char *FEN = FEN_from_gs(gs);
     int FEN_index = 0;
+
+    int en_passante_sq = BB_LSB(gs->bitboards[EN_PASSANTE]);
 
     // print out 8 rows of pieces
     for(int rank = 8; rank >= 1; rank--)
@@ -96,11 +95,11 @@ void print_gamestate(game_state *gs)
                 break;
             
             case(3) : 
-                if (gs->en_passante_target != -1) 
+                if (en_passante_sq != -1) 
                 {
                     printf("\tEn Passante Available: %c%c", 
-                    FILE_CHAR_FROM_SQ(gs->en_passante_target),
-                    RANK_CHAR_FROM_SQ(gs->en_passante_target)); 
+                    (en_passante_sq % 8) + 'a',
+                    (en_passante_sq / 8) + '1')  ; 
                 } else 
                 {
                     printf("\tNo En Passante");
@@ -154,7 +153,7 @@ void dbg_print_gamestate(game_state *gs)
     printf("BLACK KINGSIDE: %d\n",(gs->castle_rights & BLACK_KINGSIDE) > 0);
     printf("BLACK QUEENSIDE: %d\n",(gs->castle_rights & BLACK_QUEENSIDE) > 0);
 
-    printf("EN PASSANTE TARGET: %d\n",gs->en_passante_target);
+    printf("EN PASSANTE TARGET: %d\n", BB_LSB(gs->bitboards[EN_PASSANTE]));
     printf("TO MOVE: %d\n", gs->side_to_move);
     printf("FULL MOVE COUNTER: %d\n", gs->full_move_counter);
     printf("REVERSIBLE MOVE COUNTER: %d\n", gs->reversible_move_counter);
@@ -276,9 +275,12 @@ game_state gs_from_FEN(char* FEN)
     if (*FEN_CHAR != '-') 
     {
         // FILE LETTER
-        gs.en_passante_target = *FEN_CHAR - 'a';
+
+        int enp_sq = *FEN_CHAR - 'a';
         FEN_CHAR++;
-        gs.en_passante_target += (*FEN_CHAR - '1') * 8;
+        enp_sq += (*FEN_CHAR - '1') * 8;
+
+        gs.bitboards[EN_PASSANTE] = BB_SQ(enp_sq);
     }
 
     FEN_CHAR += 2;
@@ -334,8 +336,8 @@ char* FEN_from_gs(game_state *gs)
                     empty_space_count = 0;
                 }
 
-                // if the bit intersects with black, the piece is black, otherwise white
-                piece_color = (((bitboard) pow(2, bb_index)) & gs->bitboards[BLACK]) > 1;
+                // if the bit iis set in black, the piece is black, otherwise white
+                piece_color = BB_IS_SET_AT(gs->bitboards[BLACK], bb_index);
 
                 // write the appropriate piece to the FEN string
                 FEN[FEN_index++] = piece_letters[piece_color + ((piece - 2) * 2)];
@@ -405,17 +407,19 @@ char* FEN_from_gs(game_state *gs)
 
     FEN[FEN_index++] = ' ';
     
+    int enp_sq = BB_LSB(gs->bitboards[EN_PASSANTE]);
+
     // no enpassante available
-    if (gs->en_passante_target < 0) 
+    if (enp_sq < 0) 
     {
         FEN[FEN_index++] = '-';
     }
     else 
     {
         // FILE
-        FEN[FEN_index++] = FILE_CHAR_FROM_SQ(gs->en_passante_target);
+        FEN[FEN_index++] = FILE_CHAR_FROM_SQ(enp_sq);
         // RANK
-        FEN[FEN_index++] = RANK_CHAR_FROM_SQ(gs->en_passante_target);
+        FEN[FEN_index++] = RANK_CHAR_FROM_SQ(enp_sq);
     }
 
     FEN[FEN_index++] = ' ';

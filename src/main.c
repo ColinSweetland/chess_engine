@@ -28,6 +28,7 @@ void uci_engine_loop()
 
         else if (strncmp(input, "quit", 4) == 0)
         {
+            free(input);
             exit(0);
         }
 
@@ -49,17 +50,15 @@ int main()
     init();
 
     //game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R b KQkq - 1 2");
+    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/1Pp5/1P2P3/5N2/P1PP1PPP/RNBQKB1R b KQkq - 1 2");
     // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
     //uci_engine_loop();
 
     print_gamestate(&gs);
 
-    bitboard blockers = gs.bitboards[BLACK] | gs.bitboards[WHITE];
+    bitboard pmoves = bb_pawn_attacks_e(&gs, WHITE);
 
-    bitboard b_moves = bb_queen_moves(3, blockers) & ~gs.bitboards[WHITE];
-
-    print_bb(b_moves);
+    print_bb(pmoves);
 
     return 0;
 }

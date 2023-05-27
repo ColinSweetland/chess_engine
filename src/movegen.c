@@ -368,20 +368,28 @@ bitboard bb_knight_moves(int sq)
 // 1. attacks
 bitboard bb_pawn_attacks_w(game_state* gs, COLOR side_to_move)
 {
-    bitboard pawns = gs->bitboards[side_to_move];
-    
+    bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
+
     direction attack_dir = side_to_move == BLACK ? SOUTHWEST : NORTHWEST;
 
-    return GEN_SHIFT(pawns, attack_dir) & gs->bitboards[!side_to_move] & w_mask;
+    bitboard attackables = gs->bitboards[!side_to_move];
+
+    attackables |= gs->bitboards[EN_PASSANTE];
+
+    return GEN_SHIFT(pawns, attack_dir) & attackables & w_mask;
 }
 
 bitboard bb_pawn_attacks_e(game_state* gs, COLOR side_to_move)
 {
-    bitboard pawns = gs->bitboards[side_to_move];
+    bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
     
     direction attack_dir = side_to_move == BLACK ? SOUTHEAST : NORTHEAST;
 
-    return GEN_SHIFT(pawns, attack_dir) & gs->bitboards[!side_to_move] & e_mask;
+    bitboard attackables = gs->bitboards[!side_to_move];
+    
+    attackables |= gs->bitboards[EN_PASSANTE];
+
+    return GEN_SHIFT(pawns, attack_dir) & attackables & e_mask;
 }
 
 

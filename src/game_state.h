@@ -19,7 +19,8 @@ typedef enum
     BISHOP,
     ROOK,
     QUEEN,
-    KING
+    KING,
+    EN_PASSANTE
 } PIECE;
 
 typedef enum
@@ -50,9 +51,8 @@ void print_move(chess_move move);
 
 typedef struct game_state
 {
-    bitboard bitboards[8];    
+    bitboard bitboards[9];  // two for color, 6 for pieces, 1 for enpassante sq
     char castle_rights;
-    int en_passante_target;            // google it
     int reversible_move_counter;
     int full_move_counter;
     COLOR side_to_move;
