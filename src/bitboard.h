@@ -49,6 +49,8 @@ typedef enum direction {
 // these can be replaced later if needed
 #define BB_LSB(b) (__builtin_ffsll(b) - 1)
 
+#define BB_UNSET_LSB(b) (b &= b - 1)
+
 // we can use this software implementation of PEXT / PDEP later
 // https://github.com/zwegner/zp7
 

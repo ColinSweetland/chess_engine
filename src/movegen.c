@@ -17,11 +17,43 @@ static int is_within_inc(int num, int low, int high)
     return num >= low && num <= high;
 }
 
+// ---------------- MOVES ---------------------------
+
+void print_move(chess_move move)
+{
+    char *piece_name_map[7] =
+    {
+        "Pawn",
+        "Knight",
+        "Bishop",
+        "Rook",
+        "Queen",
+        "King",
+        "En Passante"
+    };
+
+    printf("%s ", piece_name_map[move.movedp - PAWN]);
+    printf("on %c%c ", FILE_CHAR_FROM_SQ(move.from_sq), RANK_CHAR_FROM_SQ(move.from_sq));
+
+    if (move.captp == NONE_PIECE)
+    {
+        printf("moves to ");
+    }
+    else 
+    {
+        printf("Captures %s on ", piece_name_map[move.captp - PAWN]);
+    }
+
+    printf("%c%c\n", FILE_CHAR_FROM_SQ(move.to_sq), RANK_CHAR_FROM_SQ(move.to_sq));
+
+    
+}
+
 // parse a move in the UCI format ("Long Algebraic notation") e.g. a2a4 or b7b8Q 
-chess_move parse_move(char *movestring)
+chess_move *parse_move(char *movestring)
 {
     char *promotions = "RNBQ"; // all promotable pieces
-    chess_move move = {0, 0, NONE_PIECE, NONE_PIECE, NONE_PIECE, 0};
+    chess_move *move = malloc(sizeof(chess_move));
     int idx = 0;
 
     // FROM SQUARE
@@ -30,7 +62,7 @@ chess_move parse_move(char *movestring)
         goto PARSE_ERR;
     } 
 
-    move.from_square = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+    move->from_sq = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
 
     idx += 2;
 
@@ -40,7 +72,7 @@ chess_move parse_move(char *movestring)
         goto PARSE_ERR;
     }
 
-    move.to_square = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+    move->to_sq = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
 
     idx += 2;
 
@@ -49,12 +81,12 @@ chess_move parse_move(char *movestring)
     {
         if (promotions[i] == movestring[idx])
         {
-            move.promotion = ROOK + i;
+            move->promo = ROOK + i;
         }
     }
 
     // wasn't assigned and it's not a space or NULL string = ERR
-    if (move.promotion == -1 && !(isspace(movestring[idx]) || movestring[idx] == '\0'))
+    if (move->promo == -1 && !(isspace(movestring[idx]) || movestring[idx] == '\0'))
     {
         goto PARSE_ERR;
     }
@@ -66,6 +98,237 @@ chess_move parse_move(char *movestring)
     fprintf(stderr,"EXITING\n");
     exit(1);
 }
+
+// returns amount of moves generated, and populates ml with them (ml should be at least len ~250)
+int gen_all_moves(game_state *gs, chess_move* ml)
+{
+    int move_idx = 0;
+
+    COLOR side_moving = gs->side_to_move;
+    bitboard occ = gs->bitboards[WHITE] | gs->bitboards[BLACK];
+    
+    bitboard pawns = gs->bitboards[PAWN] & gs->bitboards[side_moving];
+
+    bitboard p_single = bb_pawn_single_moves(pawns, occ, side_moving);
+    bitboard p_double = bb_pawn_double_moves(p_single, occ, side_moving);
+    bitboard p_att_e = bb_pawn_attacks_e(gs, side_moving);
+    bitboard p_att_w = bb_pawn_attacks_w(gs, side_moving);
+
+    direction pawn_push_dir = side_moving == BLACK ? SOUTH : NORTH;
+
+    // --- PAWNS ---
+
+    // single pawn pushes
+    while (p_single != BB_ZERO)
+    {
+        // square of a move
+        int sq = BB_LSB(p_single);
+        BB_UNSET_LSB(p_single);
+
+        ml[move_idx].movedp = PAWN;
+        ml[move_idx].captp = NONE_PIECE;
+        ml[move_idx].to_sq = sq;
+        ml[move_idx].from_sq = sq - pawn_push_dir;
+        ml[move_idx].promo = NONE_PIECE;
+
+        move_idx++;
+    }
+
+    // double pawn pushes
+    while (p_double != BB_ZERO)
+    {
+        // square of a move
+        int sq = BB_LSB(p_double);
+        BB_UNSET_LSB(p_double);
+
+        ml[move_idx].movedp = PAWN;
+        ml[move_idx].captp = NONE_PIECE;
+        ml[move_idx].to_sq = sq;
+        ml[move_idx].from_sq = sq - pawn_push_dir * 2;
+        ml[move_idx].promo = NONE_PIECE;
+
+        move_idx++;
+    }
+
+    while (p_att_e != BB_ZERO)
+    {
+        // square of a move
+        int sq = BB_LSB(p_att_e);
+        BB_UNSET_LSB(p_att_e);
+
+        ml[move_idx].movedp = PAWN;
+        ml[move_idx].captp = piece_at_sq(gs, sq);
+
+        // we need this if for pawns.. unfortunately
+        if (ml[move_idx].captp == NONE_PIECE)
+        {
+            ml[move_idx].captp = EN_PASSANTE;
+        }
+
+        ml[move_idx].to_sq = sq;
+        ml[move_idx].from_sq = sq - (pawn_push_dir + EAST);
+        ml[move_idx].promo = NONE_PIECE;
+
+        move_idx++;
+    }
+
+    while (p_att_w != BB_ZERO)
+    {
+        // square of a move
+        int sq = BB_LSB(p_att_w);
+        BB_UNSET_LSB(p_att_w);
+
+        ml[move_idx].movedp = PAWN;
+        ml[move_idx].captp = piece_at_sq(gs, sq);
+
+        // we need this if just for pawns.. unfortunately
+        if (ml[move_idx].captp == NONE_PIECE)
+        {
+            ml[move_idx].captp = EN_PASSANTE;
+        }
+
+        ml[move_idx].to_sq = sq;
+        ml[move_idx].from_sq = sq - (pawn_push_dir + WEST);
+        ml[move_idx].promo = NONE_PIECE;
+
+        move_idx++;
+    }
+
+    // --- KNIGHTS ---
+
+    bitboard kn = gs->bitboards[KNIGHT] & gs->bitboards[side_moving];
+    bitboard kn_moves = BB_ZERO;
+
+    while (kn != BB_ZERO)
+    {
+        int kn_sq = BB_LSB(kn);
+        BB_UNSET_LSB(kn);
+
+        kn_moves = bb_knight_moves(kn_sq) & ~gs->bitboards[side_moving];
+        
+        while (kn_moves != BB_ZERO)
+        {
+            int sq = BB_LSB(kn_moves);
+            BB_UNSET_LSB(kn_moves);
+
+            ml[move_idx].movedp = KNIGHT;
+            ml[move_idx].captp = piece_at_sq(gs, sq);
+            ml[move_idx].to_sq = sq;
+            ml[move_idx].from_sq = kn_sq;
+            ml[move_idx].promo = NONE_PIECE;
+
+            move_idx++;
+        }
+    }
+
+    // --- BISHOPS ---
+
+    bitboard bsh = gs->bitboards[BISHOP] & gs->bitboards[side_moving];
+    bitboard bsh_moves = BB_ZERO;
+
+    while (bsh != BB_ZERO)
+    {
+        int bsh_sq = BB_LSB(bsh);
+        BB_UNSET_LSB(bsh);
+
+        bsh_moves = bb_bishop_moves(bsh_sq, occ) & ~gs->bitboards[side_moving];
+        
+        while (bsh_moves != BB_ZERO)
+        {
+            int sq = BB_LSB(bsh_moves);
+            BB_UNSET_LSB(bsh_moves);
+
+            ml[move_idx].movedp = BISHOP;
+            ml[move_idx].captp = piece_at_sq(gs, sq);
+            ml[move_idx].to_sq = sq;
+            ml[move_idx].from_sq = bsh_sq;
+            ml[move_idx].promo = NONE_PIECE;
+
+            move_idx++;
+        }
+    }
+
+    // --- ROOKS ---
+
+    bitboard rk = gs->bitboards[ROOK] & gs->bitboards[side_moving];
+    bitboard rk_moves = BB_ZERO;
+
+    while (rk != BB_ZERO)
+    {
+        int rk_sq = BB_LSB(rk);
+        BB_UNSET_LSB(rk);
+
+        rk_moves = bb_rook_moves(rk_sq, occ) & ~gs->bitboards[side_moving];
+        
+        while (rk_moves != BB_ZERO)
+        {
+            int sq = BB_LSB(rk_moves);
+            BB_UNSET_LSB(rk_moves);
+
+            ml[move_idx].movedp = ROOK;
+            ml[move_idx].captp = piece_at_sq(gs, sq);
+            ml[move_idx].to_sq = sq;
+            ml[move_idx].from_sq = rk_sq;
+            ml[move_idx].promo = NONE_PIECE;
+
+            move_idx++;
+        }
+    }
+
+     // --- QUEENS ---
+
+    bitboard qn = gs->bitboards[QUEEN] & gs->bitboards[side_moving];
+    bitboard qn_moves = BB_ZERO;
+
+    while (qn != BB_ZERO)
+    {
+        int qn_sq = BB_LSB(qn);
+        BB_UNSET_LSB(qn);
+
+        qn_moves = bb_queen_moves(qn_sq, occ) & ~gs->bitboards[side_moving];
+        
+        while (qn_moves != BB_ZERO)
+        {
+            int sq = BB_LSB(qn_moves);
+            BB_UNSET_LSB(qn_moves);
+
+            ml[move_idx].movedp = QUEEN;
+            ml[move_idx].captp = piece_at_sq(gs, sq);
+            ml[move_idx].to_sq = sq;
+            ml[move_idx].from_sq = qn_sq;
+            ml[move_idx].promo = NONE_PIECE;
+
+            move_idx++;
+        }
+    }
+
+     // --- KING ---
+
+    bitboard kng = gs->bitboards[KING] & gs->bitboards[side_moving];
+    int kng_sq = BB_LSB(kng);
+        
+    bitboard kng_moves = bb_king_moves(kng_sq) & ~gs->bitboards[side_moving];   
+
+    while (kng_moves != BB_ZERO) {
+        int sq = BB_LSB(kng_moves);
+        BB_UNSET_LSB(kng_moves);
+
+        ml[move_idx].movedp = KING;
+        ml[move_idx].captp = piece_at_sq(gs, sq);
+        ml[move_idx].to_sq = sq;
+        ml[move_idx].from_sq = kng_sq;
+        ml[move_idx].promo = NONE_PIECE;
+
+        move_idx++;
+    }
+
+
+    return move_idx;
+}
+
+
+
+
 
 /* Adapted from chessprogramming wiki */
 // used for generating bishop and rook tables
@@ -121,8 +384,6 @@ bitboard dumb7fill(int origin_sq, bitboard blockers, int *dirs)
 
     return moves_bb;
 }
-
-
 
 // ------------------ BISHOPS -----------------------
 
@@ -394,35 +655,17 @@ bitboard bb_pawn_attacks_e(game_state* gs, COLOR side_to_move)
 
 
 // 2. Moves
-bitboard bb_pawn_single_moves(game_state *gs, COLOR side_to_move)
+bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move)
 {
     direction move_dir = side_to_move == BLACK ? SOUTH : NORTH;
 
-    bitboard occupancy = gs->bitboards[WHITE] | gs->bitboards[BLACK];
-    bitboard pawns = gs->bitboards[PAWN] & gs->bitboards[side_to_move];
-
-    return GEN_SHIFT(pawns, move_dir) & ~occupancy;
+    return GEN_SHIFT(pawns, move_dir) & ~blockers;
 }
 
-bitboard bb_pawn_double_moves(game_state *gs, bitboard single_moves, COLOR side_to_move)
+bitboard bb_pawn_double_moves(bitboard single_moves, bitboard blockers, COLOR side_to_move)
 {
-    bitboard occupancy = gs->bitboards[WHITE] | gs->bitboards[BLACK];
+    direction move_dir = side_to_move == BLACK ? SOUTH : NORTH;
+    bitboard double_move_rank = side_to_move == BLACK ? BB_RANK_5 : BB_RANK_4;
 
-    direction move_dir; 
-    bitboard double_move_rank;
-    
-    // BLACK
-    if (side_to_move == BLACK)
-    {
-        move_dir = SOUTH;
-        double_move_rank = BB_RANK_5;
-    }
-    // WHITE
-    else
-    {
-        move_dir = NORTH;
-        double_move_rank = BB_RANK_4;
-    }
-
-    return GEN_SHIFT(single_moves, move_dir) & ~occupancy & double_move_rank;
+    return GEN_SHIFT(single_moves, move_dir) & ~blockers & double_move_rank;
 }

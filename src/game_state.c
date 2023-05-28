@@ -7,18 +7,6 @@
 #include "game_state.h"
 #include "bitboard.h"
 
-// ---------------- MOVES ---------------------------
-
-void print_move(chess_move move)
-{
-    printf("\n%c %d -> %c %d\n",
-    'a' + move.from_square % 8,
-    (move.from_square / 8) + 1,
-    'a' + move.to_square % 8,
-    (move.to_square / 8) + 1
-    );
-}
-
 // --------------- GAME STATE ---------------------
 
 static game_state get_gamestate() 
@@ -157,6 +145,19 @@ void dbg_print_gamestate(game_state *gs)
     printf("TO MOVE: %d\n", gs->side_to_move);
     printf("FULL MOVE COUNTER: %d\n", gs->full_move_counter);
     printf("REVERSIBLE MOVE COUNTER: %d\n", gs->reversible_move_counter);
+}
+
+PIECE piece_at_sq(game_state *gs, int sq)
+{
+    for (PIECE p = PAWN; p <= KING; p++)
+    {
+        if (BB_IS_SET_AT(gs->bitboards[p], sq))
+        {
+            return p;
+        }
+    }
+
+    return NONE_PIECE;
 }
 
 

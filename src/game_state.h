@@ -31,22 +31,6 @@ typedef enum
     BLACK_KINGSIDE = 8,
 } CASTLE_RIGHTS;
 
-//--------------MOVES-------------------
-
-typedef struct chess_move
-{
-    int from_square;
-    int to_square;
-
-    PIECE moved;
-    PIECE captured;
-    PIECE promotion; 
-    int flags;
-
-} chess_move;
-
-void print_move(chess_move move);
-
 //-------------GAME STATE-----------------
 
 typedef struct game_state
@@ -58,6 +42,8 @@ typedef struct game_state
     COLOR side_to_move;
 
 } game_state;
+
+PIECE piece_at_sq(game_state *gs, int sq);
 
 game_state gs_from_FEN(char *FEN);
 
