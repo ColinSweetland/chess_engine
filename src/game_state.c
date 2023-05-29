@@ -6,6 +6,7 @@
 
 #include "game_state.h"
 #include "bitboard.h"
+#include "movegen.h"
 
 // --------------- GAME STATE ---------------------
 
@@ -104,7 +105,7 @@ void print_gamestate(game_state *gs)
     }
 
     // print file label
-    printf("\n\n\t a  b  c  d  e  f  g  h\n");
+    printf("\n\n\t a  b  c  d  e  f  g  h\n\n");
 }
 
 // prints the gamestate in an extremely verbose way, for debugging only
@@ -158,6 +159,58 @@ PIECE piece_at_sq(game_state *gs, int sq)
     }
 
     return NONE_PIECE;
+}
+
+bool sq_attacked(game_state *gs, int sq, COLOR attacking_color)
+{
+    // opposite of how att pawns move
+    int pawn_att_dir = attacking_color == BLACK ? NORTH : SOUTH;
+    bitboard enemy_pawns = gs->bitboards[attacking_color] & gs->bitboards[PAWN];
+    
+    bitboard potential_pawn_att_sqs = BB_SQ(sq + pawn_att_dir + EAST) & ~BB_FILE_A;
+    potential_pawn_att_sqs |= BB_SQ(sq + pawn_att_dir + WEST) & ~BB_FILE_H;
+
+    // check for pawn attackers
+    if (potential_pawn_att_sqs & enemy_pawns)
+    {
+        return true;
+    }
+
+    // check for knight attackers
+    if (bb_knight_moves(sq) & gs->bitboards[KNIGHT] & gs->bitboards[attacking_color])
+    {
+        return true;
+    }
+
+    // check for king attacker
+    if (bb_king_moves(sq) & gs->bitboards[KING] & gs->bitboards[attacking_color])
+    {
+        return true;
+    }
+
+    // check for rook / queen attackers
+
+    // rook moves from kings square
+    bitboard rook_attkrs  = bb_rook_moves(sq, gs->bitboards[BLACK] | gs->bitboards[WHITE]);
+
+    // opposite pieces 
+    rook_attkrs &= gs->bitboards[attacking_color];
+
+    // Rook or Queen
+    rook_attkrs &= gs->bitboards[ROOK] | gs->bitboards[QUEEN];
+
+    if (rook_attkrs)
+    {
+        return true;
+    }
+
+    // Bishop or Queen
+    bitboard bsh_attkrs = bb_bishop_moves(sq, gs->bitboards[BLACK] | gs->bitboards[WHITE]);
+
+    bsh_attkrs &= gs->bitboards[attacking_color];
+    bsh_attkrs &= gs->bitboards[BISHOP] | gs->bitboards[QUEEN];
+
+    return bsh_attkrs;
 }
 
 

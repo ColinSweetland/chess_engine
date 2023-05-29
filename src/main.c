@@ -50,22 +50,15 @@ int main()
     init();
 
     //game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
+    game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/5N2/P1P2PPP/RNBQKB1R w KQkq - 1 2");
     // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
     //uci_engine_loop();
 
     print_gamestate(&gs);
 
-    chess_move *ml = malloc(sizeof(chess_move) * 255);
-
-    int nmoves = gen_all_moves(&gs, ml);
-
-    printf("nmoves: %d\n",nmoves);
-
-    for (int i = 0; i < nmoves; i++)
-    {
-        print_move(ml[i]);
-    }
+    printf("Attacked? %s\n",
+    sq_attacked(&gs, 60, WHITE) ? "YES" : "NO"
+    );
 
     return 0;
 }

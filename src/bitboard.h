@@ -29,7 +29,7 @@ typedef enum direction {
 
 // bb at a certain square
 // maybe we could use a lookup table later
-#define BB_SQ(sq) ((bitboard) (1ULL << sq))
+#define BB_SQ(sq) ((bitboard) (1ULL << (sq)))
 
 // True if bitboard is set at idx else false
 #define BB_IS_SET_AT(bb, idx) ((bool) ((bb & (1ULL << idx)) != BB_ZERO))

@@ -43,14 +43,16 @@ typedef struct game_state
 
 } game_state;
 
-PIECE piece_at_sq(game_state *gs, int sq);
-
 game_state gs_from_FEN(char *FEN);
 
 char* FEN_from_gs(game_state *gs);
 
-void dbg_print_gamestate(game_state *gs);
+PIECE piece_at_sq(game_state *gs, int sq);
+
+bool sq_attacked(game_state *gs, int sq, COLOR attacking_color);
 
 void print_gamestate(game_state *gs);
+
+void dbg_print_gamestate(game_state *gs);
 
 #endif
