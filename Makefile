@@ -7,7 +7,9 @@ OBJ 	:= obj
 SOURCES := $(wildcard $(SRC)/*.c)
 
 OBJECTS := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
-OUTPUT	:= ./output/main
+
+OUTDIR	:= output
+OUTPUT 	:= $(OUTDIR)/main
 
 DEPS = $(OBJECTS:.o=.d)
 
@@ -18,14 +20,16 @@ all: $(OUTPUT) run
 
 # Run the program
 run:
-	$(OUTPUT)
+	./$(OUTPUT)
 
 # link objects and output runnable program in output/
 $(OUTPUT): $(OBJECTS)
+	mkdir -p $(OUTDIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Make a .o for each .c
 $(OBJ)/%.o: $(SRC)/%.c
+	mkdir -p $(OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Remove generated files
