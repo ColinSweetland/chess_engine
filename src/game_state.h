@@ -37,10 +37,9 @@ typedef struct game_state
 {
     bitboard bitboards[9];  // two for color, 6 for pieces, 1 for enpassante sq
     char castle_rights;
-    int reversible_move_counter;
-    int full_move_counter;
+    unsigned int reversible_move_counter;
+    unsigned int full_move_counter;
     COLOR side_to_move;
-
 } game_state;
 
 game_state gs_from_FEN(char *FEN);

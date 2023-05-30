@@ -326,13 +326,93 @@ int gen_all_moves(game_state *gs, chess_move* ml)
     return move_idx;
 }
 
+void make_move(game_state *gs, chess_move move)
+{
+    //TODO: Handle castle moves, including if we move or capture rooks/king
 
+    //TODO: if we double push a pawn- update enpassante
+    // I think the best way to do this is with a flag 
 
+    // move the moved piece
+    BB_UNSET(gs->bitboards[move.movedp], move.from_sq);
+    BB_UNSET(gs->bitboards[gs->side_to_move], move.from_sq);
 
+    BB_SET(gs->bitboards[move.movedp], move.to_sq);
+    BB_SET(gs->bitboards[gs->side_to_move], move.to_sq);
+
+    // increment rev move counter (it will get reset if it needs to)
+    gs->reversible_move_counter += 1;
+    
+    // moving pawns is not reversible
+    if (move.movedp == PAWN)
+        gs->reversible_move_counter = 0;
+
+    // en passante is always cleared after a move
+    gs->bitboards[EN_PASSANTE] &= BB_ZERO;
+    
+    // unset the captured piece if there is one & reset rev move counter
+    switch (move.captp)
+    {
+        case NONE_PIECE :
+            break;
+        case EN_PASSANTE :
+            gs->reversible_move_counter = 0;
+            BB_UNSET(gs->bitboards[PAWN], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+            BB_UNSET(gs->bitboards[!gs->side_to_move], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+            break;
+        default :
+            gs->reversible_move_counter = 0;
+            BB_UNSET(gs->bitboards[move.captp],move.to_sq);
+            BB_UNSET(gs->bitboards[!gs->side_to_move], move.to_sq);
+            break;
+    }
+
+    // increase full move counter if black
+    gs->full_move_counter += gs->side_to_move;
+
+    // now it's the other side's turn
+    gs->side_to_move = !gs->side_to_move;
+}
+
+void unmake_move(game_state *gs, chess_move move)
+{
+    //TODO: reverse irreversible state somehow
+
+    // if we are unmaking a move black did, side to move becomes black
+    gs->side_to_move = !gs->side_to_move;
+
+    // move the moved piece back
+    BB_SET(gs->bitboards[move.movedp], move.from_sq);
+    BB_SET(gs->bitboards[gs->side_to_move], move.from_sq);
+
+    BB_UNSET(gs->bitboards[move.movedp], move.to_sq);
+    BB_UNSET(gs->bitboards[gs->side_to_move], move.to_sq);
+
+    // WARNING: This would need to be restored if it was reset
+    gs->reversible_move_counter -= 1;
+
+    // reset the captured piece if there was one
+    switch (move.captp)
+    {
+        case NONE_PIECE :
+            break;
+        case EN_PASSANTE :
+            BB_SET(gs->bitboards[PAWN], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+            BB_SET(gs->bitboards[!gs->side_to_move], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+            break;
+        default :
+            BB_SET(gs->bitboards[move.captp],move.to_sq);
+            BB_SET(gs->bitboards[!gs->side_to_move], move.to_sq);
+            break;
+    }
+
+    // increase full move counter if black
+    gs->full_move_counter -= gs->side_to_move;
+}
 
 /* Adapted from chessprogramming wiki */
 // used for generating bishop and rook tables
-bitboard dumb7fill(int origin_sq, bitboard blockers, int *dirs)
+static bitboard dumb7fill(int origin_sq, bitboard blockers, int *dirs)
 {
     bitboard moves_bb = BB_ZERO;
     bitboard dirmask = ~BB_ZERO;

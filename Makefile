@@ -1,15 +1,15 @@
 CC		:= gcc
 CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -g -lm -mbmi2 -std=c99 -O3 -MMD -MP
 
-SRC		:= src
-OBJ 	:= obj
+SRC_DIR	:= src
+OBJ_DIR	:= obj
 
-SOURCES := $(wildcard $(SRC)/*.c)
+SOURCES := $(wildcard $(SRC_DIR)/*.c)
 
-OBJECTS := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
+OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SOURCES))
 
-OUTDIR	:= output
-OUTPUT 	:= $(OUTDIR)/main
+OUT_DIR	:= output
+OUTPUT 	:= $(OUT_DIR)/main
 
 DEPS = $(OBJECTS:.o=.d)
 
@@ -24,17 +24,17 @@ run:
 
 # link objects and output runnable program in output/
 $(OUTPUT): $(OBJECTS)
-	mkdir -p $(OUTDIR)
+	mkdir -p $(OUT_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
 # Make a .o for each .c
-$(OBJ)/%.o: $(SRC)/%.c
-	mkdir -p $(OBJ)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Remove generated files
 clean:
-	rm -f $(OBJECTS) $(DEPS) $(OUTPUT)
+	rm -rf $(OBJ_DIR) $(OUT_DIR)
 
 .PHONY: clean all run
 

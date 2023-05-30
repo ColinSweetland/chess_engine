@@ -17,22 +17,24 @@ typedef enum direction {
     WEST = -1
 } direction;
 
+#define PAWN_PUSH_DIR(color) ((color) ? SOUTH : NORTH)
+
 // empty: all zeroes
 #define BB_ZERO ((bitboard) 0ULL)
 
 // x -> 1 at idx
-#define BB_SET(bb, idx) (bb |= (1ULL << idx))
+#define BB_SET(bb, idx) (bb |= (1ULL << (idx)))
 // x -> 0 at idx
-#define BB_UNSET(bb, idx) (bb &= ~(1ULL << idx))
+#define BB_UNSET(bb, idx) (bb &= ~(1ULL << (idx)))
 // x -> ~x at idx
-#define BB_TOGGLE(bb, idx) (bb ^= (1ULL << idx))
+#define BB_TOGGLE(bb, idx) (bb ^= (1ULL << (idx)))
 
 // bb at a certain square
 // maybe we could use a lookup table later
 #define BB_SQ(sq) ((bitboard) (1ULL << (sq)))
 
 // True if bitboard is set at idx else false
-#define BB_IS_SET_AT(bb, idx) ((bool) ((bb & (1ULL << idx)) != BB_ZERO))
+#define BB_IS_SET_AT(bb, idx) ((bool) ((bb & (1ULL << (idx))) != BB_ZERO))
 
 // "human" coordinate to bb index e.g. (3,1) -> 16
 #define RANKFILE_TO_SQ(rank, file) ((rank - 1)*8 + file - 1)

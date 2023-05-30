@@ -21,6 +21,10 @@ void print_move(chess_move move);
 
 int gen_all_moves(game_state *gs, chess_move* ml);
 
+void make_move(game_state *gs, chess_move move);
+
+void unmake_move(game_state *gs, chess_move move);
+
 // parse move in long algebraic notation
 chess_move *parse_move(char *movestring);
 

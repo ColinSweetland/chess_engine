@@ -66,7 +66,7 @@ void print_gamestate(game_state *gs)
         switch(rank)
         {
             case(7) :
-                printf("\tFull Moves: %d Rev Moves: %d",gs->full_move_counter,gs->reversible_move_counter);
+                printf("\tFull Moves: %u Rev Moves: %u",gs->full_move_counter,gs->reversible_move_counter);
                 break;
             
             case(5) :
@@ -144,8 +144,8 @@ void dbg_print_gamestate(game_state *gs)
 
     printf("EN PASSANTE TARGET: %d\n", BB_LSB(gs->bitboards[EN_PASSANTE]));
     printf("TO MOVE: %d\n", gs->side_to_move);
-    printf("FULL MOVE COUNTER: %d\n", gs->full_move_counter);
-    printf("REVERSIBLE MOVE COUNTER: %d\n", gs->reversible_move_counter);
+    printf("FULL MOVE COUNTER: %u\n", gs->full_move_counter);
+    printf("REVERSIBLE MOVE COUNTER: %u\n", gs->reversible_move_counter);
 }
 
 PIECE piece_at_sq(game_state *gs, int sq)
