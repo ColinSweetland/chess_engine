@@ -8,7 +8,7 @@
 
 #define MAX_UCI_INPUT_SIZE 1024
 
-void uci_engine_loop()
+void uci_engine_loop(void)
 {
     char *input = malloc(MAX_UCI_INPUT_SIZE * sizeof(char));
     size_t input_size = MAX_UCI_INPUT_SIZE;
@@ -39,13 +39,13 @@ void uci_engine_loop()
     }
 }   
 
-void init() 
+void init(void) 
 {
     init_rook_tables();
     init_bishop_tables();
 }
 
-int main()
+int main(void)
 {
     init();
 

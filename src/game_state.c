@@ -10,7 +10,7 @@
 
 // --------------- GAME STATE ---------------------
 
-static game_state get_gamestate() 
+static game_state get_gamestate(void) 
 {
     // calloc because bitboard must be all zeroes
     game_state gs = *(game_state *) calloc(1, sizeof(game_state));

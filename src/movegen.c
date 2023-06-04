@@ -366,7 +366,7 @@ int gen_all_moves(const game_state *gs, chess_move* ml)
         bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
 
         // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(gs, kng_sq + EAST,       !side_moving) | 
+        bool attacked = sq_attacked(gs, kng_sq + EAST,       !side_moving) || 
                         sq_attacked(gs, kng_sq + (EAST * 2), !side_moving);
 
         // if these conditions met, we can castle kingside
@@ -391,7 +391,7 @@ int gen_all_moves(const game_state *gs, chess_move* ml)
 
         bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
 
-        bool attacked = sq_attacked(gs, kng_sq + WEST,       !side_moving) | 
+        bool attacked = sq_attacked(gs, kng_sq + WEST,       !side_moving) || 
                         sq_attacked(gs, kng_sq + (WEST * 2), !side_moving);
 
         if (spaces_free & !attacked)
@@ -604,7 +604,7 @@ bitboard bb_bishop_moves(int sq, bitboard blockers)
     return BISHOP_MOVE_LOOKUP[BISHOP_MOVE_START_IDX[sq] + blocker_key];
 }
 
-void init_bishop_tables()
+void init_bishop_tables(void)
 {    
     int dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
     // iterate over each square
@@ -687,7 +687,7 @@ bitboard bb_rook_moves(int sq, bitboard blockers)
     return ROOK_MOVE_LOOKUP[ROOK_MOVE_START_IDX[sq] + blocker_key];
 }
 
-void init_rook_tables()
+void init_rook_tables(void)
 {    
     int dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square

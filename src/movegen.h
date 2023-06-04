@@ -29,12 +29,12 @@ void unmake_move(game_state *gs, chess_move move);
 chess_move *parse_move(char *movestring);
 
 // ----- BISHOP MOVES-----
-void init_bishop_tables();
+void init_bishop_tables(void);
 
 bitboard bb_bishop_moves(int sq, bitboard blockers);
 
 // ----- ROOK MOVES-----
-void init_rook_tables();
+void init_rook_tables(void);
 
 bitboard bb_rook_moves(int sq, bitboard blockers);
 
