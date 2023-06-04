@@ -45,7 +45,7 @@ typedef struct game_state
     COLOR side_to_move;
 } game_state;
 
-game_state gs_from_FEN(char *FEN);
+game_state gs_from_FEN(const char *FEN);
 
 char* FEN_from_gs(const game_state *gs);
 

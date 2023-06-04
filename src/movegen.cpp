@@ -23,7 +23,7 @@ void print_move(const chess_move move)
 {
 
     // index with PIECE - PAWN
-    char *piece_name_map[7] =
+    const char *piece_name_map[7] =
     {
         "Pawn",
         "Knight",
@@ -79,8 +79,8 @@ void print_move(const chess_move move)
 // parse a move in the UCI format ("Long Algebraic notation") e.g. a2a4 or b7b8Q 
 chess_move *parse_move(char *movestring)
 {
-    char *promotions = "RNBQ"; // all promotable pieces
-    chess_move *move = malloc(sizeof(chess_move));
+    const char *promotions = "NBRQ"; // all promotable pieces
+    chess_move *move = (chess_move *) malloc(sizeof(chess_move));
     int idx = 0;
 
     // FROM SQUARE
@@ -108,7 +108,7 @@ chess_move *parse_move(char *movestring)
     {
         if (promotions[i] == movestring[idx])
         {
-            move->promo = ROOK + i;
+            move->promo = (PIECE) (KNIGHT + i);
         }
     }
 
@@ -366,8 +366,8 @@ int gen_all_moves(const game_state *gs, chess_move* ml)
         bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
 
         // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(gs, kng_sq + EAST,       !side_moving) || 
-                        sq_attacked(gs, kng_sq + (EAST * 2), !side_moving);
+        bool attacked = sq_attacked(gs, kng_sq + EAST,       (COLOR) !side_moving) || 
+                        sq_attacked(gs, kng_sq + (EAST * 2), (COLOR) !side_moving);
 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
@@ -391,8 +391,8 @@ int gen_all_moves(const game_state *gs, chess_move* ml)
 
         bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
 
-        bool attacked = sq_attacked(gs, kng_sq + WEST,       !side_moving) || 
-                        sq_attacked(gs, kng_sq + (WEST * 2), !side_moving);
+        bool attacked = sq_attacked(gs, kng_sq + WEST,       (COLOR) !side_moving) || 
+                        sq_attacked(gs, kng_sq + (WEST * 2), (COLOR) !side_moving);
 
         if (spaces_free & !attacked)
         {
@@ -453,7 +453,7 @@ void make_move(game_state *gs, chess_move move)
     gs->full_move_counter += gs->side_to_move;
 
     // now it's the other side's turn
-    gs->side_to_move = !gs->side_to_move;
+    gs->side_to_move = (COLOR) !gs->side_to_move;
 }
 
 void unmake_move(game_state *gs, chess_move move)
@@ -461,7 +461,7 @@ void unmake_move(game_state *gs, chess_move move)
     //TODO: reverse irreversible state somehow
 
     // if we are unmaking a move black did, side to move becomes black
-    gs->side_to_move = !gs->side_to_move;
+    gs->side_to_move = (COLOR) !gs->side_to_move;
 
     // move the moved piece back
     BB_SET(gs->bitboards[move.movedp], move.from_sq);
@@ -494,7 +494,7 @@ void unmake_move(game_state *gs, chess_move move)
 
 /* Adapted from chessprogramming wiki */
 // used for generating bishop and rook tables
-static bitboard dumb7fill(int origin_sq, bitboard blockers, int *dirs)
+static bitboard dumb7fill(int origin_sq, bitboard blockers, direction *dirs)
 {
     bitboard moves_bb = BB_ZERO;
     bitboard dirmask = ~BB_ZERO;
@@ -606,7 +606,7 @@ bitboard bb_bishop_moves(int sq, bitboard blockers)
 
 void init_bishop_tables(void)
 {    
-    int dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
+    direction dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
     // iterate over each square
     for (int curr_sq = 0; curr_sq < 64; curr_sq++)
     {
@@ -689,7 +689,7 @@ bitboard bb_rook_moves(int sq, bitboard blockers)
 
 void init_rook_tables(void)
 {    
-    int dirs[4] = {NORTH, SOUTH, EAST, WEST};
+    direction dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square
     for (int curr_sq = 0; curr_sq < 64; curr_sq++)
     {

@@ -1,8 +1,9 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <ctype.h>
 #include <string.h>
+
+#include <cstdlib>
 
 #include "game_state.h"
 #include "bitboard.h"
@@ -150,11 +151,11 @@ void dbg_print_gamestate(const game_state *gs)
 
 PIECE piece_at_sq(const game_state *gs, int sq)
 {
-    for (PIECE p = PAWN; p <= KING; p++)
+    for (int p = PAWN; p <= KING; p++)
     {
         if (BB_IS_SET_AT(gs->bitboards[p], sq))
         {
-            return p;
+            return (PIECE) p;
         }
     }
 
@@ -217,14 +218,14 @@ bool sq_attacked(const game_state *gs, int sq, COLOR attacking_color)
 // Forsyth Edwards Notation is a common string based representation of gamestate for chess
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-game_state gs_from_FEN(char* FEN) 
+game_state gs_from_FEN(const char* FEN) 
 {
     game_state gs = get_gamestate();
 
     // Fen strings start at top left position
     int bb_file = 1;
     int bb_rank = 8;
-    char *FEN_CHAR = FEN;
+    char *FEN_CHAR = (char *) FEN;
 
     int sq = 56;
 
@@ -288,7 +289,7 @@ game_state gs_from_FEN(char* FEN)
     FEN_CHAR++; // skip space
 
     // ---- which side moves ----
-    gs.side_to_move = *FEN_CHAR == 'b';
+    gs.side_to_move = *FEN_CHAR == 'b' ? BLACK : WHITE;
     
 
 
@@ -342,10 +343,10 @@ game_state gs_from_FEN(char* FEN)
 
 
     // ---- REVERSIBLE or HALF MOVE COUNTER ----
-    gs.reversible_move_counter = (int) strtol(FEN_CHAR, &FEN_CHAR, 10);
+    gs.reversible_move_counter = (int) std::strtol(FEN_CHAR, &FEN_CHAR, 10);
 
     // ---- FULL MOVE COUNTER ----
-    gs.full_move_counter = (int) strtol(FEN_CHAR, &FEN_CHAR, 10);
+    gs.full_move_counter = (int) std::strtol(FEN_CHAR, &FEN_CHAR, 10);
 
     return gs;
 }
@@ -353,12 +354,12 @@ game_state gs_from_FEN(char* FEN)
 char* FEN_from_gs(const game_state *gs) 
 {
     // theoretical max length FEN is like 87 (according to stack overflow) + rounding to extra safe
-    char* FEN = calloc(90, sizeof(char));
+    char* FEN = (char *) calloc(90, sizeof(char));
 
     // "Lookup tables"
     // index with : Color + ((Piece - 2) * 2)
-    char* piece_letters = "PpNnBbRrQqKk";
-    char* side_to_move = "wb";
+    const char* piece_letters = "PpNnBbRrQqKk";
+    const char* side_to_move = "wb";
 
     int FEN_index = 0; // index in FEN
 

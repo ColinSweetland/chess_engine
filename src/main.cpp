@@ -10,7 +10,7 @@
 
 void uci_engine_loop(void)
 {
-    char *input = malloc(MAX_UCI_INPUT_SIZE * sizeof(char));
+    char *input = (char *) malloc(MAX_UCI_INPUT_SIZE * sizeof(char));
     size_t input_size = MAX_UCI_INPUT_SIZE;
 
     while(1)
@@ -60,7 +60,7 @@ int main(void)
 
     print_gamestate(&gs);
 
-    chess_move *ml = malloc(sizeof(chess_move) * 255);
+    chess_move *ml = (chess_move *) malloc(sizeof(chess_move) * 255);
     int movcnt = gen_all_moves(&gs, ml);
 
     for (int i = 0; i < movcnt; i++)

@@ -1,12 +1,12 @@
-CC		:= clang
-CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -g -mbmi2 -std=c99 -O3 -MMD -MP
+CC		:= clang++
+CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -g -mbmi2 -std=c++17 -O3 -MMD -MP
 
 SRC_DIR	:= src
 OBJ_DIR	:= obj
 
-SOURCES := $(wildcard $(SRC_DIR)/*.c)
+SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
 
-OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SOURCES))
+OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
 OUT_DIR	:= output
 OUTPUT 	:= $(OUT_DIR)/main
@@ -27,8 +27,8 @@ $(OUTPUT): $(OBJECTS)
 	mkdir -p $(OUT_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
-# Make a .o for each .c
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+# Make a .o for each .cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
