@@ -25,11 +25,14 @@ typedef enum
 
 typedef enum
 {
-    WHITE_QUEENSIDE = 1,
-    WHITE_KINGSIDE = 2,
-    BLACK_QUEENSIDE = 4,
-    BLACK_KINGSIDE = 8,
-} CASTLE_RIGHTS;
+    WQS = 1,
+    WKS = 2,
+    BQS = 4,
+    BKS = 8,
+} CASTLE_RIGHT;
+
+#define WHITE_CASTLE ((CASTLE_RIGHT) (WQS | WKS))
+#define BLACK_CASTLE ((CASTLE_RIGHT) (BQS | BKS))
 
 //-------------GAME STATE-----------------
 
@@ -44,14 +47,14 @@ typedef struct game_state
 
 game_state gs_from_FEN(char *FEN);
 
-char* FEN_from_gs(game_state *gs);
+char* FEN_from_gs(const game_state *gs);
 
-PIECE piece_at_sq(game_state *gs, int sq);
+PIECE piece_at_sq(const game_state *gs, int sq);
 
-bool sq_attacked(game_state *gs, int sq, COLOR attacking_color);
+bool sq_attacked(const game_state *gs, int sq, COLOR attacking_color);
 
-void print_gamestate(game_state *gs);
+void print_gamestate(const game_state *gs);
 
-void dbg_print_gamestate(game_state *gs);
+void dbg_print_gamestate(const game_state *gs);
 
 #endif

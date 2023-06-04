@@ -29,7 +29,7 @@ static game_state get_gamestate()
     return gs;
 }
 
-void print_gamestate(game_state *gs)
+void print_gamestate(const game_state *gs)
 {
     char *FEN = FEN_from_gs(gs);
     int FEN_index = 0;
@@ -71,13 +71,13 @@ void print_gamestate(game_state *gs)
             
             case(5) :
                 printf("\tCastling: ");
-                if (gs->castle_rights &  WHITE_KINGSIDE)
+                if (gs->castle_rights &  WKS)
                     putchar('K');
-                if (gs->castle_rights &  WHITE_QUEENSIDE)
+                if (gs->castle_rights &  WQS)
                     putchar('Q');  
-                if (gs->castle_rights &  BLACK_KINGSIDE)
+                if (gs->castle_rights &  BKS)
                     putchar('k');
-                if (gs->castle_rights &  BLACK_QUEENSIDE)
+                if (gs->castle_rights &  BQS)
                     putchar('q');
                 if (gs->castle_rights == 0)
                     putchar('-');
@@ -109,7 +109,7 @@ void print_gamestate(game_state *gs)
 }
 
 // prints the gamestate in an extremely verbose way, for debugging only
-void dbg_print_gamestate(game_state *gs) 
+void dbg_print_gamestate(const game_state *gs) 
 {
     printf("\n*** PAWNS ***\n");
     print_bb(gs->bitboards[PAWN]);
@@ -137,10 +137,10 @@ void dbg_print_gamestate(game_state *gs)
 
     printf("\n*** OTHER DATA ***\n");
     printf("CASTLE RIGHTS\n");
-    printf("WHITE KINGSIDE: %d\n",(gs->castle_rights & WHITE_KINGSIDE) > 0);
-    printf("WHITE QUEENSIDE: %d\n",(gs->castle_rights & WHITE_QUEENSIDE) > 0);
-    printf("BLACK KINGSIDE: %d\n",(gs->castle_rights & BLACK_KINGSIDE) > 0);
-    printf("BLACK QUEENSIDE: %d\n",(gs->castle_rights & BLACK_QUEENSIDE) > 0);
+    printf("WHITE KINGSIDE: %d\n",(gs->castle_rights & WKS) > 0);
+    printf("WHITE QUEENSIDE: %d\n",(gs->castle_rights & WQS) > 0);
+    printf("BLACK KINGSIDE: %d\n",(gs->castle_rights & BKS) > 0);
+    printf("BLACK QUEENSIDE: %d\n",(gs->castle_rights & BQS) > 0);
 
     printf("EN PASSANTE TARGET: %d\n", BB_LSB(gs->bitboards[EN_PASSANTE]));
     printf("TO MOVE: %d\n", gs->side_to_move);
@@ -148,7 +148,7 @@ void dbg_print_gamestate(game_state *gs)
     printf("REVERSIBLE MOVE COUNTER: %u\n", gs->reversible_move_counter);
 }
 
-PIECE piece_at_sq(game_state *gs, int sq)
+PIECE piece_at_sq(const game_state *gs, int sq)
 {
     for (PIECE p = PAWN; p <= KING; p++)
     {
@@ -161,7 +161,7 @@ PIECE piece_at_sq(game_state *gs, int sq)
     return NONE_PIECE;
 }
 
-bool sq_attacked(game_state *gs, int sq, COLOR attacking_color)
+bool sq_attacked(const game_state *gs, int sq, COLOR attacking_color)
 {
     // opposite of how att pawns move
     int pawn_att_dir = attacking_color == BLACK ? NORTH : SOUTH;
@@ -305,16 +305,16 @@ game_state gs_from_FEN(char* FEN)
             switch(*FEN_CHAR)
             {
                 case('K') :
-                    gs.castle_rights |= WHITE_KINGSIDE;
+                    gs.castle_rights |= WKS;
                     break;
                 case('Q') :
-                    gs.castle_rights |= WHITE_QUEENSIDE;
+                    gs.castle_rights |= WQS;
                     break;
                 case('k') :
-                    gs.castle_rights |= BLACK_KINGSIDE;
+                    gs.castle_rights |= BKS;
                     break;
                 case('q') :
-                    gs.castle_rights |= BLACK_QUEENSIDE;
+                    gs.castle_rights |= BQS;
                     break;
             }
 
@@ -350,7 +350,7 @@ game_state gs_from_FEN(char* FEN)
     return gs;
 }
 
-char* FEN_from_gs(game_state *gs) 
+char* FEN_from_gs(const game_state *gs) 
 {
     // theoretical max length FEN is like 87 (according to stack overflow) + rounding to extra safe
     char* FEN = calloc(90, sizeof(char));
@@ -439,19 +439,19 @@ char* FEN_from_gs(game_state *gs)
     } 
     else 
     {
-        if(gs->castle_rights & WHITE_KINGSIDE)
+        if(gs->castle_rights & WKS)
         {
             FEN[FEN_index++] = 'K';
         }
-        if(gs->castle_rights & WHITE_QUEENSIDE)
+        if(gs->castle_rights & WQS)
         {
             FEN[FEN_index++] = 'Q';
         }
-        if(gs->castle_rights & BLACK_KINGSIDE)
+        if(gs->castle_rights & BKS)
         {
             FEN[FEN_index++] = 'k';
         }
-        if(gs->castle_rights & BLACK_QUEENSIDE)
+        if(gs->castle_rights & BQS)
         {
             FEN[FEN_index++] = 'q';
         }

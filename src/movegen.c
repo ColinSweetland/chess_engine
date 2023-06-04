@@ -19,8 +19,10 @@ static int is_within_inc(int num, int low, int high)
 
 // ---------------- MOVES ---------------------------
 
-void print_move(chess_move move)
+void print_move(const chess_move move)
 {
+
+    // index with PIECE - PAWN
     char *piece_name_map[7] =
     {
         "Pawn",
@@ -31,6 +33,33 @@ void print_move(chess_move move)
         "King",
         "En Passante"
     };
+
+    //promo or castle move
+    if (move.promo != NONE_PIECE)
+    {
+        switch (move.movedp) {
+
+            case PAWN : // pawn promotion
+                printf("Pawn on %c%c ", FILE_CHAR_FROM_SQ(move.from_sq), RANK_CHAR_FROM_SQ(move.from_sq));
+                printf("moves to %c%c ", FILE_CHAR_FROM_SQ(move.to_sq), RANK_CHAR_FROM_SQ(move.to_sq));
+                printf("and promotes to %s\n", piece_name_map[move.promo - PAWN]);
+                break;
+
+            case KING :
+                printf("King castles %sside\n", piece_name_map[move.promo - PAWN]);
+                break;
+
+            default :
+                fprintf(stderr,
+                 "Unexpected moving piece %s when move promo field set to %s\n", 
+                 piece_name_map[move.movedp - PAWN],
+                 piece_name_map[move.promo - PAWN] );
+                exit(1);
+                break;
+        }
+
+        return;
+    }
 
     printf("%s ", piece_name_map[move.movedp - PAWN]);
     printf("on %c%c ", FILE_CHAR_FROM_SQ(move.from_sq), RANK_CHAR_FROM_SQ(move.from_sq));
@@ -45,8 +74,6 @@ void print_move(chess_move move)
     }
 
     printf("%c%c\n", FILE_CHAR_FROM_SQ(move.to_sq), RANK_CHAR_FROM_SQ(move.to_sq));
-
-    
 }
 
 // parse a move in the UCI format ("Long Algebraic notation") e.g. a2a4 or b7b8Q 
@@ -99,15 +126,15 @@ chess_move *parse_move(char *movestring)
     exit(1);
 }
 
-// returns amount of moves generated, and populates ml with them (ml should be at least len ~250)
-int gen_all_moves(game_state *gs, chess_move* ml)
+// returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
+int gen_all_moves(const game_state *gs, chess_move* ml)
 {
     int move_idx = 0;
 
-    COLOR side_moving = gs->side_to_move;
-    bitboard occ = gs->bitboards[WHITE] | gs->bitboards[BLACK];
+    const COLOR side_moving = gs->side_to_move;
+    const bitboard occ = gs->bitboards[WHITE] | gs->bitboards[BLACK];
     
-    bitboard pawns = gs->bitboards[PAWN] & gs->bitboards[side_moving];
+    const bitboard pawns = gs->bitboards[PAWN] & gs->bitboards[side_moving];
 
     bitboard p_single = bb_pawn_single_moves(pawns, occ, side_moving);
     bitboard p_double = bb_pawn_double_moves(p_single, occ, side_moving);
@@ -302,7 +329,7 @@ int gen_all_moves(game_state *gs, chess_move* ml)
         }
     }
 
-     // --- KING ---
+    // --- KING ---
 
     bitboard kng = gs->bitboards[KING] & gs->bitboards[side_moving];
     int kng_sq = BB_LSB(kng);
@@ -323,13 +350,68 @@ int gen_all_moves(game_state *gs, chess_move* ml)
     }
 
 
+    // --- CASTLING ---
+
+    // this will give us the castle rights of the moving side only
+    // so even if we are black, we still use "white" here in this section
+    char moving_cr = ((gs->castle_rights) >> (side_moving * 2)) & WHITE_CASTLE;
+
+    // kingside
+    if (moving_cr & WKS) 
+    {
+        // squares between rook and king must be free
+        // aka the kingside rook can attack our king
+        int kingside_rooksq = side_moving == BLACK ? 63 : 7;
+
+        bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
+
+        // the spaces the king moves through also can't be attacked
+        bool attacked = sq_attacked(gs, kng_sq + EAST,       !side_moving) | 
+                        sq_attacked(gs, kng_sq + (EAST * 2), !side_moving);
+
+        // if these conditions met, we can castle kingside
+        if (spaces_free & !attacked)
+        {
+            ml[move_idx].movedp = KING;
+            ml[move_idx].captp = NONE_PIECE;
+            ml[move_idx].to_sq = kng_sq + (EAST * 2);
+            ml[move_idx].from_sq = kng_sq;
+
+            // how to indicate kingside castle
+            ml[move_idx].promo = KING;
+            
+            move_idx++;
+        }
+    }
+
+    // Queenside, see comments above
+    if (moving_cr & WQS) 
+    {
+        int queenside_rooksq = side_moving == BLACK ? 56 : 0;
+
+        bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
+
+        bool attacked = sq_attacked(gs, kng_sq + WEST,       !side_moving) | 
+                        sq_attacked(gs, kng_sq + (WEST * 2), !side_moving);
+
+        if (spaces_free & !attacked)
+        {
+            ml[move_idx].movedp = KING;
+            ml[move_idx].captp = NONE_PIECE;
+            ml[move_idx].to_sq = kng_sq + (WEST * 2);
+            ml[move_idx].from_sq = kng_sq;
+
+            ml[move_idx].promo = QUEEN;
+            
+            move_idx++;
+        }
+    }
+
     return move_idx;
 }
 
 void make_move(game_state *gs, chess_move move)
 {
-    //TODO: Handle castle moves, including if we move or capture rooks/king
-
     //TODO: if we double push a pawn- update enpassante
     // I think the best way to do this is with a flag 
 
@@ -707,7 +789,7 @@ bitboard bb_knight_moves(int sq)
 
 // ------------------PAWNS-----------------------
 // 1. attacks
-bitboard bb_pawn_attacks_w(game_state* gs, COLOR side_to_move)
+bitboard bb_pawn_attacks_w(const game_state* gs, COLOR side_to_move)
 {
     bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
 
@@ -720,7 +802,7 @@ bitboard bb_pawn_attacks_w(game_state* gs, COLOR side_to_move)
     return GEN_SHIFT(pawns, attack_dir) & attackables & w_mask;
 }
 
-bitboard bb_pawn_attacks_e(game_state* gs, COLOR side_to_move)
+bitboard bb_pawn_attacks_e(const game_state* gs, COLOR side_to_move)
 {
     bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
     

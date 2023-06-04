@@ -14,12 +14,12 @@ typedef struct chess_move
 
     PIECE movedp;
     PIECE captp;
-    PIECE promo; 
+    PIECE promo;  // we indicate castling by setting promo to king/queen to indicate king/queenside
 } chess_move;
 
-void print_move(chess_move move);
+void print_move(const chess_move move);
 
-int gen_all_moves(game_state *gs, chess_move* ml);
+int gen_all_moves(const game_state *gs, chess_move* ml);
 
 void make_move(game_state *gs, chess_move move);
 
@@ -50,8 +50,8 @@ bitboard bb_knight_moves(int sq);
 
 // ----- PAWN MOVES -----
 // 1. Attacks
-bitboard bb_pawn_attacks_e(game_state *gs, COLOR side_to_move);
-bitboard bb_pawn_attacks_w(game_state *gs, COLOR side_to_move);
+bitboard bb_pawn_attacks_e(const game_state *gs, COLOR side_to_move);
+bitboard bb_pawn_attacks_w(const game_state *gs, COLOR side_to_move);
 // 2. Moves
 bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move);
 

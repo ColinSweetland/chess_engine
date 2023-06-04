@@ -44,8 +44,8 @@ typedef enum direction {
 #define FILE_FROM_SQ(square) ((square % 8) + 1)
 
 // getting char versions of rank or file, for printing
-#define RANK_CHAR_FROM_SQ(r) (RANK_FROM_SQ(r) + '1' - 1)
-#define FILE_CHAR_FROM_SQ(f) (FILE_FROM_SQ(f) + 'a' - 1) 
+#define RANK_CHAR_FROM_SQ(sq) (RANK_FROM_SQ(sq) + '1' - 1)
+#define FILE_CHAR_FROM_SQ(sq) (FILE_FROM_SQ(sq) + 'a' - 1) 
  
 //**** GCC BUILTINS ********
 // these can be replaced later if needed
