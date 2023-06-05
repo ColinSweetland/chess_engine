@@ -1,10 +1,11 @@
 #include <inttypes.h>
 #include <stdio.h>
+
 #include "bitboard.h"
 
 void print_bb(bitboard bb)
 {
-    //space
+    // space
     printf("\n");
 
     /* iterate through ranks (rows) of the board
@@ -14,10 +15,10 @@ void print_bb(bitboard bb)
     for (int rank = 8; rank > 0; rank--)
     {
         // rank number label
-        printf("%d\t", rank);     
+        printf("%d\t", rank);
 
         // iterate through files (columns) of the board
-        // files are 1 indexed   
+        // files are 1 indexed
         for (int file = 1; file <= 8; file++)
         {
             int square = RANKFILE_TO_SQ(rank, file);

@@ -4,7 +4,6 @@
 #include "bitboard.h"
 #include "game_state.h"
 
-
 //--------------MOVES-------------------
 
 typedef struct chess_move
@@ -14,12 +13,12 @@ typedef struct chess_move
 
     PIECE movedp;
     PIECE captp;
-    PIECE promo;  // we indicate castling by setting promo to king/queen to indicate king/queenside
+    PIECE promo; // we indicate castling by setting promo to king/queen to indicate king/queenside
 } chess_move;
 
 void print_move(const chess_move move);
 
-int gen_all_moves(const game_state *gs, chess_move* ml);
+int gen_all_moves(const game_state *gs, chess_move *ml);
 
 void make_move(game_state *gs, chess_move move);
 

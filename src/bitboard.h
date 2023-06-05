@@ -6,7 +6,8 @@
 
 typedef uint64_t bitboard;
 
-typedef enum direction {
+typedef enum direction
+{
     NORTHWEST = 7,
     NORTH = 8,
     NORTHEAST = 9,
@@ -20,7 +21,7 @@ typedef enum direction {
 #define PAWN_PUSH_DIR(color) ((color) ? SOUTH : NORTH)
 
 // empty: all zeroes
-#define BB_ZERO ((bitboard) 0ULL)
+#define BB_ZERO ((bitboard)0ULL)
 
 // x -> 1 at idx
 #define BB_SET(bb, idx) (bb |= (1ULL << (idx)))
@@ -31,13 +32,13 @@ typedef enum direction {
 
 // bb at a certain square
 // maybe we could use a lookup table later
-#define BB_SQ(sq) ((bitboard) (1ULL << (sq)))
+#define BB_SQ(sq) ((bitboard)(1ULL << (sq)))
 
 // True if bitboard is set at idx else false
-#define BB_IS_SET_AT(bb, idx) ((bool) ((bb & (1ULL << (idx))) != BB_ZERO))
+#define BB_IS_SET_AT(bb, idx) ((bool)((bb & (1ULL << (idx))) != BB_ZERO))
 
 // "human" coordinate to bb index e.g. (3,1) -> 16
-#define RANKFILE_TO_SQ(rank, file) ((rank - 1)*8 + file - 1)
+#define RANKFILE_TO_SQ(rank, file) ((rank - 1) * 8 + file - 1)
 
 // index like 56 to 1-8 file or rank num
 #define RANK_FROM_SQ(square) ((square / 8) + 1)
@@ -45,8 +46,8 @@ typedef enum direction {
 
 // getting char versions of rank or file, for printing
 #define RANK_CHAR_FROM_SQ(sq) (RANK_FROM_SQ(sq) + '1' - 1)
-#define FILE_CHAR_FROM_SQ(sq) (FILE_FROM_SQ(sq) + 'a' - 1) 
- 
+#define FILE_CHAR_FROM_SQ(sq) (FILE_FROM_SQ(sq) + 'a' - 1)
+
 //**** GCC BUILTINS ********
 // these can be replaced later if needed
 #define BB_LSB(b) (__builtin_ffsll(b) - 1)
@@ -58,11 +59,11 @@ typedef enum direction {
 
 // returns a bitboard with the lowest bits corresponding to
 // the bits in bb in the positions set in mask
-#define BB_PEXT(bb, mask) ((bitboard) _pext_u64(bb, mask))
+#define BB_PEXT(bb, mask) ((bitboard)_pext_u64(bb, mask))
 
 // returns a bitboard where lowest bits of bb are moved
 // into positions set in mask
-#define BB_PDEP(bb, mask) ((bitboard) _pdep_u64(bb, mask))
+#define BB_PDEP(bb, mask) ((bitboard)_pdep_u64(bb, mask))
 
 // bit count
 #define BB_POPCNT(bb) (__builtin_popcountll(bb))
@@ -90,7 +91,7 @@ typedef enum direction {
 #define BB_FILE_H ((bitboard)0x8080808080808080ULL)
 
 // hex print
-#define hprint_bb(b) (printf("0x%016lx",b)) 
+#define hprint_bb(b) (printf("0x%016lx", b))
 
 void print_bb(bitboard b);
 

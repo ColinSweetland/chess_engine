@@ -2,18 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bitboard.h"
 #include "game_state.h"
 #include "movegen.h"
-#include "bitboard.h"
 
 #define MAX_UCI_INPUT_SIZE 1024
 
 void uci_engine_loop(void)
 {
-    char *input = (char *) malloc(MAX_UCI_INPUT_SIZE * sizeof(char));
+    char *input = (char *)malloc(MAX_UCI_INPUT_SIZE * sizeof(char));
     size_t input_size = MAX_UCI_INPUT_SIZE;
 
-    while(1)
+    while (1)
     {
 
         fgets(input, input_size, stdin);
@@ -37,9 +37,9 @@ void uci_engine_loop(void)
             printf("readyok\n");
         }
     }
-}   
+}
 
-void init(void) 
+void init(void)
 {
     init_rook_tables();
     init_bishop_tables();
@@ -54,24 +54,23 @@ int main(void)
 
     // starter pos
     // game_state gs = gs_from_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    
+
     // game_state gs = gs_from_FEN("rnbqkbnr/pp1ppppp/8/2p5/1P2P3/pppppppp/P1PP1PPP/RNBQKB1R w KQkq - 1 2");
-    //uci_engine_loop();
+    // uci_engine_loop();
 
     print_gamestate(&gs);
 
-    chess_move *ml = (chess_move *) malloc(sizeof(chess_move) * 255);
+    chess_move *ml = (chess_move *)malloc(sizeof(chess_move) * 255);
     int movcnt = gen_all_moves(&gs, ml);
 
     for (int i = 0; i < movcnt; i++)
     {
         printf("%d : ", i);
         print_move(ml[i]);
-        
+
         if (ml[i].promo != NONE_PIECE)
             printf("fromsq: %d, tosq, %d\n", ml[i].from_sq, ml[i].to_sq);
     }
-
 
     return 0;
 }
