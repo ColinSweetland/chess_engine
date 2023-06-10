@@ -1,12 +1,12 @@
-#include <inttypes.h>
-#include <stdbool.h>
+#include <cinttypes>
+#include <cstdint>
 
 #ifndef BITBOARD_INCLUDED
 #define BITBOARD_INCLUDED
 
-typedef uint64_t bitboard;
+using bitboard = std::uint64_t;
 
-typedef enum direction
+enum direction
 {
     NORTHWEST = 7,
     NORTH = 8,
@@ -16,7 +16,7 @@ typedef enum direction
     SOUTH = -8,
     SOUTHWEST = -9,
     WEST = -1
-} direction;
+};
 
 #define PAWN_PUSH_DIR(color) ((color) ? SOUTH : NORTH)
 

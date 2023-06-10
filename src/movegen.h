@@ -6,7 +6,7 @@
 
 //--------------MOVES-------------------
 
-typedef struct chess_move
+struct chess_move
 {
     int from_sq;
     int to_sq;
@@ -14,7 +14,7 @@ typedef struct chess_move
     PIECE movedp;
     PIECE captp;
     PIECE promo; // we indicate castling by setting promo to king/queen to indicate king/queenside
-} chess_move;
+};
 
 void print_move(const chess_move move);
 
