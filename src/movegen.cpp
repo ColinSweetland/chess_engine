@@ -7,6 +7,7 @@
 #include "bitboard.h"
 #include "game_state.h"
 #include "movegen.h"
+#include "types.h"
 
 // when we shift east/west, wrapping can happen. To avoid this, we have to mask a row
 static const bitboard e_mask = ~BB_FILE_A;
@@ -32,8 +33,8 @@ void print_move(const chess_move move)
         {
 
         case PAWN: // pawn promotion
-            printf("Pawn on %c%c ", FILE_CHAR_FROM_SQ(move.from_sq), RANK_CHAR_FROM_SQ(move.from_sq));
-            printf("moves to %c%c ", FILE_CHAR_FROM_SQ(move.to_sq), RANK_CHAR_FROM_SQ(move.to_sq));
+            printf("Pawn on %c%c ", FILE_CHAR_FROM_SQ(move.origin), RANK_CHAR_FROM_SQ(move.origin));
+            printf("moves to %c%c ", FILE_CHAR_FROM_SQ(move.dest), RANK_CHAR_FROM_SQ(move.dest));
             printf("and promotes to %s\n", piece_name_map[move.promo - PAWN]);
             break;
 
@@ -52,7 +53,7 @@ void print_move(const chess_move move)
     }
 
     printf("%s ", piece_name_map[move.movedp - PAWN]);
-    printf("on %c%c ", FILE_CHAR_FROM_SQ(move.from_sq), RANK_CHAR_FROM_SQ(move.from_sq));
+    printf("on %c%c ", FILE_CHAR_FROM_SQ(move.origin), RANK_CHAR_FROM_SQ(move.origin));
 
     if (move.captp == NONE_PIECE)
     {
@@ -63,7 +64,7 @@ void print_move(const chess_move move)
         printf("Captures %s on ", piece_name_map[move.captp - PAWN]);
     }
 
-    printf("%c%c\n", FILE_CHAR_FROM_SQ(move.to_sq), RANK_CHAR_FROM_SQ(move.to_sq));
+    printf("%c%c\n", FILE_CHAR_FROM_SQ(move.dest), RANK_CHAR_FROM_SQ(move.dest));
 }
 
 // parse a move in the UCI format ("Long Algebraic notation") e.g. a2a4 or b7b8Q
@@ -79,7 +80,7 @@ chess_move *parse_move(char *movestring)
         goto PARSE_ERR;
     }
 
-    move->from_sq = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+    move->origin = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
 
     idx += 2;
 
@@ -89,7 +90,7 @@ chess_move *parse_move(char *movestring)
         goto PARSE_ERR;
     }
 
-    move->to_sq = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
+    move->dest = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
 
     idx += 2;
 
@@ -131,7 +132,7 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
     bitboard p_att_e = bb_pawn_attacks_e(gs, side_moving);
     bitboard p_att_w = bb_pawn_attacks_w(gs, side_moving);
 
-    direction pawn_push_dir = side_moving == BLACK ? SOUTH : NORTH;
+    DIR pawn_push_dir = PAWN_PUSH_DIR(side_moving);
 
     // --- PAWNS ---
 
@@ -144,8 +145,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
         ml[move_idx].movedp = PAWN;
         ml[move_idx].captp = NONE_PIECE;
-        ml[move_idx].to_sq = sq;
-        ml[move_idx].from_sq = sq - pawn_push_dir;
+        ml[move_idx].dest = sq;
+        ml[move_idx].origin = sq - pawn_push_dir;
         ml[move_idx].promo = NONE_PIECE;
 
         move_idx++;
@@ -160,8 +161,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
         ml[move_idx].movedp = PAWN;
         ml[move_idx].captp = NONE_PIECE;
-        ml[move_idx].to_sq = sq;
-        ml[move_idx].from_sq = sq - pawn_push_dir * 2;
+        ml[move_idx].dest = sq;
+        ml[move_idx].origin = sq - pawn_push_dir * 2;
         ml[move_idx].promo = NONE_PIECE;
 
         move_idx++;
@@ -182,8 +183,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
             ml[move_idx].captp = EN_PASSANTE;
         }
 
-        ml[move_idx].to_sq = sq;
-        ml[move_idx].from_sq = sq - (pawn_push_dir + EAST);
+        ml[move_idx].dest = sq;
+        ml[move_idx].origin = sq - (pawn_push_dir + EAST);
         ml[move_idx].promo = NONE_PIECE;
 
         move_idx++;
@@ -204,8 +205,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
             ml[move_idx].captp = EN_PASSANTE;
         }
 
-        ml[move_idx].to_sq = sq;
-        ml[move_idx].from_sq = sq - (pawn_push_dir + WEST);
+        ml[move_idx].dest = sq;
+        ml[move_idx].origin = sq - (pawn_push_dir + WEST);
         ml[move_idx].promo = NONE_PIECE;
 
         move_idx++;
@@ -230,8 +231,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
             ml[move_idx].movedp = KNIGHT;
             ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].to_sq = sq;
-            ml[move_idx].from_sq = kn_sq;
+            ml[move_idx].dest = sq;
+            ml[move_idx].origin = kn_sq;
             ml[move_idx].promo = NONE_PIECE;
 
             move_idx++;
@@ -257,8 +258,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
             ml[move_idx].movedp = BISHOP;
             ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].to_sq = sq;
-            ml[move_idx].from_sq = bsh_sq;
+            ml[move_idx].dest = sq;
+            ml[move_idx].origin = bsh_sq;
             ml[move_idx].promo = NONE_PIECE;
 
             move_idx++;
@@ -284,8 +285,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
             ml[move_idx].movedp = ROOK;
             ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].to_sq = sq;
-            ml[move_idx].from_sq = rk_sq;
+            ml[move_idx].dest = sq;
+            ml[move_idx].origin = rk_sq;
             ml[move_idx].promo = NONE_PIECE;
 
             move_idx++;
@@ -311,8 +312,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
             ml[move_idx].movedp = QUEEN;
             ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].to_sq = sq;
-            ml[move_idx].from_sq = qn_sq;
+            ml[move_idx].dest = sq;
+            ml[move_idx].origin = qn_sq;
             ml[move_idx].promo = NONE_PIECE;
 
             move_idx++;
@@ -333,8 +334,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
         ml[move_idx].movedp = KING;
         ml[move_idx].captp = piece_at_sq(gs, sq);
-        ml[move_idx].to_sq = sq;
-        ml[move_idx].from_sq = kng_sq;
+        ml[move_idx].dest = sq;
+        ml[move_idx].origin = kng_sq;
         ml[move_idx].promo = NONE_PIECE;
 
         move_idx++;
@@ -344,7 +345,7 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
 
     // this will give us the castle rights of the moving side only
     // so even if we are black, we still use "white" here in this section
-    char moving_cr = ((gs->castle_rights) >> (side_moving * 2)) & WHITE_CASTLE;
+    char moving_cr = ((gs->castle_rights) >> (side_moving * 2)) & WCR;
 
     // kingside
     if (moving_cr & WKS)
@@ -364,8 +365,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         {
             ml[move_idx].movedp = KING;
             ml[move_idx].captp = NONE_PIECE;
-            ml[move_idx].to_sq = kng_sq + (EAST * 2);
-            ml[move_idx].from_sq = kng_sq;
+            ml[move_idx].dest = kng_sq + (EAST * 2);
+            ml[move_idx].origin = kng_sq;
 
             // how to indicate kingside castle
             ml[move_idx].promo = KING;
@@ -388,8 +389,8 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         {
             ml[move_idx].movedp = KING;
             ml[move_idx].captp = NONE_PIECE;
-            ml[move_idx].to_sq = kng_sq + (WEST * 2);
-            ml[move_idx].from_sq = kng_sq;
+            ml[move_idx].dest = kng_sq + (WEST * 2);
+            ml[move_idx].origin = kng_sq;
 
             ml[move_idx].promo = QUEEN;
 
@@ -406,11 +407,11 @@ void make_move(game_state *gs, chess_move move)
     //  I think the best way to do this is with a flag
 
     // move the moved piece
-    BB_UNSET(gs->bitboards[move.movedp], move.from_sq);
-    BB_UNSET(gs->bitboards[gs->side_to_move], move.from_sq);
+    BB_UNSET(gs->bitboards[move.movedp], move.origin);
+    BB_UNSET(gs->bitboards[gs->side_to_move], move.origin);
 
-    BB_SET(gs->bitboards[move.movedp], move.to_sq);
-    BB_SET(gs->bitboards[gs->side_to_move], move.to_sq);
+    BB_SET(gs->bitboards[move.movedp], move.dest);
+    BB_SET(gs->bitboards[gs->side_to_move], move.dest);
 
     // increment rev move counter (it will get reset if it needs to)
     gs->reversible_move_counter += 1;
@@ -429,13 +430,13 @@ void make_move(game_state *gs, chess_move move)
         break;
     case EN_PASSANTE:
         gs->reversible_move_counter = 0;
-        BB_UNSET(gs->bitboards[PAWN], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
-        BB_UNSET(gs->bitboards[!gs->side_to_move], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+        BB_UNSET(gs->bitboards[PAWN], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
+        BB_UNSET(gs->bitboards[!gs->side_to_move], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
         break;
     default:
         gs->reversible_move_counter = 0;
-        BB_UNSET(gs->bitboards[move.captp], move.to_sq);
-        BB_UNSET(gs->bitboards[!gs->side_to_move], move.to_sq);
+        BB_UNSET(gs->bitboards[move.captp], move.dest);
+        BB_UNSET(gs->bitboards[!gs->side_to_move], move.dest);
         break;
     }
 
@@ -454,11 +455,11 @@ void unmake_move(game_state *gs, chess_move move)
     gs->side_to_move = (COLOR)!gs->side_to_move;
 
     // move the moved piece back
-    BB_SET(gs->bitboards[move.movedp], move.from_sq);
-    BB_SET(gs->bitboards[gs->side_to_move], move.from_sq);
+    BB_SET(gs->bitboards[move.movedp], move.origin);
+    BB_SET(gs->bitboards[gs->side_to_move], move.origin);
 
-    BB_UNSET(gs->bitboards[move.movedp], move.to_sq);
-    BB_UNSET(gs->bitboards[gs->side_to_move], move.to_sq);
+    BB_UNSET(gs->bitboards[move.movedp], move.dest);
+    BB_UNSET(gs->bitboards[gs->side_to_move], move.dest);
 
     // WARNING: This would need to be restored if it was reset
     gs->reversible_move_counter -= 1;
@@ -470,13 +471,13 @@ void unmake_move(game_state *gs, chess_move move)
         break;
 
     case EN_PASSANTE:
-        BB_SET(gs->bitboards[PAWN], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
-        BB_SET(gs->bitboards[!gs->side_to_move], move.to_sq + PAWN_PUSH_DIR(!gs->side_to_move));
+        BB_SET(gs->bitboards[PAWN], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
+        BB_SET(gs->bitboards[!gs->side_to_move], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
         break;
 
     default:
-        BB_SET(gs->bitboards[move.captp], move.to_sq);
-        BB_SET(gs->bitboards[!gs->side_to_move], move.to_sq);
+        BB_SET(gs->bitboards[move.captp], move.dest);
+        BB_SET(gs->bitboards[!gs->side_to_move], move.dest);
         break;
     }
 
@@ -486,7 +487,7 @@ void unmake_move(game_state *gs, chess_move move)
 
 /* Adapted from chessprogramming wiki */
 // used for generating bishop and rook tables
-static bitboard dumb7fill(int origin_sq, bitboard blockers, direction *dirs)
+static bitboard dumb7fill(int origin_sq, bitboard blockers, DIR *dirs)
 {
     bitboard moves_bb = BB_ZERO;
     bitboard dirmask = ~BB_ZERO;
@@ -494,7 +495,7 @@ static bitboard dumb7fill(int origin_sq, bitboard blockers, direction *dirs)
     // diri indicates the direction we are filling, and mask to apply (above two tables)
     for (int diri = 0; diri < 4; diri++)
     {
-        direction current_dir = dirs[diri];
+        DIR current_dir = dirs[diri];
 
         switch (current_dir)
         {
@@ -583,7 +584,7 @@ bitboard bb_bishop_moves(int sq, bitboard blockers)
 
 void init_bishop_tables(void)
 {
-    direction dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
+    DIR dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
     // iterate over each square
     for (int curr_sq = 0; curr_sq < 64; curr_sq++)
     {
@@ -651,7 +652,7 @@ bitboard bb_rook_moves(int sq, bitboard blockers)
 
 void init_rook_tables(void)
 {
-    direction dirs[4] = {NORTH, SOUTH, EAST, WEST};
+    DIR dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square
     for (int curr_sq = 0; curr_sq < 64; curr_sq++)
     {
@@ -734,7 +735,7 @@ bitboard bb_pawn_attacks_w(const game_state *gs, COLOR side_to_move)
     bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
     bitboard attackables = gs->bitboards[!side_to_move];
 
-    direction attack_dir = side_to_move == BLACK ? SOUTHWEST : NORTHWEST;
+    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(side_to_move) + WEST);
 
     attackables |= gs->bitboards[EN_PASSANTE];
 
@@ -746,7 +747,7 @@ bitboard bb_pawn_attacks_e(const game_state *gs, COLOR side_to_move)
     bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
     bitboard attackables = gs->bitboards[!side_to_move];
 
-    direction attack_dir = side_to_move == BLACK ? SOUTHEAST : NORTHEAST;
+    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(side_to_move) + EAST);
 
     attackables |= gs->bitboards[EN_PASSANTE];
 
@@ -754,16 +755,14 @@ bitboard bb_pawn_attacks_e(const game_state *gs, COLOR side_to_move)
 }
 
 // 2. Moves
-bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move)
+inline bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move)
 {
-    direction move_dir = side_to_move == BLACK ? SOUTH : NORTH;
-
-    return GEN_SHIFT(pawns, move_dir) & ~blockers;
+    return GEN_SHIFT(pawns, PAWN_PUSH_DIR(side_to_move)) & ~blockers;
 }
 
-bitboard bb_pawn_double_moves(bitboard single_moves, bitboard blockers, COLOR side_to_move)
+inline bitboard bb_pawn_double_moves(bitboard single_moves, bitboard blockers, COLOR side_to_move)
 {
-    direction move_direction = side_to_move == BLACK ? SOUTH : NORTH;
+    DIR move_direction = PAWN_PUSH_DIR(side_to_move);
     bitboard double_move_rank = side_to_move == BLACK ? BB_RANK_5 : BB_RANK_4;
 
     return GEN_SHIFT(single_moves, move_direction) & ~blockers & double_move_rank;

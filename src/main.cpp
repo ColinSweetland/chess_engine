@@ -69,7 +69,7 @@ int main(void)
         print_move(ml[i]);
 
         if (ml[i].promo != NONE_PIECE)
-            printf("fromsq: %d, tosq, %d\n", ml[i].from_sq, ml[i].to_sq);
+            printf("fromsq: %d, tosq, %d\n", ml[i].origin, ml[i].dest);
     }
 
     return 0;

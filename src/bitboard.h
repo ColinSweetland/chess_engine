@@ -1,25 +1,7 @@
-#include <cinttypes>
-#include <cstdint>
+#ifndef BITBOARD_INCL
+#define BITBOARD_INCL
 
-#ifndef BITBOARD_INCLUDED
-#define BITBOARD_INCLUDED
-
-using bitboard = std::uint64_t;
-
-enum direction
-{
-    NORTHWEST = 7,
-    NORTH = 8,
-    NORTHEAST = 9,
-    EAST = 1,
-    SOUTHEAST = -7,
-    SOUTH = -8,
-    SOUTHWEST = -9,
-    WEST = -1
-};
-
-#define PAWN_PUSH_DIR(color) ((color) ? SOUTH : NORTH)
-
+#include "types.h"
 // empty: all zeroes
 #define BB_ZERO ((bitboard)0ULL)
 
@@ -95,4 +77,4 @@ enum direction
 
 void print_bb(bitboard b);
 
-#endif
+#endif // BITBOARD_INCL

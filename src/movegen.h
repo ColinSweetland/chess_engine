@@ -6,16 +6,6 @@
 
 //--------------MOVES-------------------
 
-struct chess_move
-{
-    int from_sq;
-    int to_sq;
-
-    PIECE movedp;
-    PIECE captp;
-    PIECE promo; // we indicate castling by setting promo to king/queen to indicate king/queenside
-};
-
 void print_move(const chess_move move);
 
 int gen_all_moves(const game_state *gs, chess_move *ml);

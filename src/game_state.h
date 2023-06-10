@@ -1,49 +1,7 @@
-#ifndef GAMESTATE_INCLUDED
-#define GAMESTATE_INCLUDED
+#ifndef GAMESTATE_INCL
+#define GAMESTATE_INCL
 
-#include "bitboard.h"
-
-//--------------ENUMS-------------------
-
-enum COLOR
-{
-    WHITE,
-    BLACK
-};
-
-enum PIECE
-{
-    NONE_PIECE = -1,
-    PAWN = 2, // start at two because index 0 & 1 represent color, the enum above
-    KNIGHT,
-    BISHOP,
-    ROOK,
-    QUEEN,
-    KING,
-    EN_PASSANTE
-};
-
-enum CASTLE_RIGHT
-{
-    WQS = 1,
-    WKS = 2,
-    BQS = 4,
-    BKS = 8,
-};
-
-#define WHITE_CASTLE ((CASTLE_RIGHT)(WQS | WKS))
-#define BLACK_CASTLE ((CASTLE_RIGHT)(BQS | BKS))
-
-//-------------GAME STATE-----------------
-
-struct game_state
-{
-    bitboard bitboards[9]; // two for color, 6 for pieces, 1 for enpassante sq
-    char castle_rights;
-    unsigned int reversible_move_counter;
-    unsigned int full_move_counter;
-    COLOR side_to_move;
-};
+#include "types.h"
 
 game_state gs_from_FEN(const char *FEN);
 
@@ -57,4 +15,4 @@ void print_gamestate(const game_state *gs);
 
 void dbg_print_gamestate(const game_state *gs);
 
-#endif
+#endif // GAMESTATE_INCL
