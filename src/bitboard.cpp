@@ -1,34 +1,31 @@
-#include <inttypes.h>
-#include <stdio.h>
+#include <iostream>
 
 #include "bitboard.h"
 
 void print_bb(bitboard bb)
 {
     // space
-    printf("\n");
+    std::cout << "\n";
 
-    /* iterate through ranks (rows) of the board
-    ranks are 1 indexed, and we iterate backwards, because
+    /* ranks and files are 1 indexed, we iterate backwards, because
     squares are starting at bottom left (0) to top right (63)
-    this fits the standard way chess boards are labeled (from white side) */
+    this is the standard way chess boards are labeled (from white side) */
     for (int rank = 8; rank > 0; rank--)
     {
         // rank number label
-        printf("%d\t", rank);
+        std::cout << rank << "\t";
 
-        // iterate through files (columns) of the board
-        // files are 1 indexed
         for (int file = 1; file <= 8; file++)
         {
-            int square = RANKFILE_TO_SQ(rank, file);
+            int square = rankfile_to_sq(rank, file);
 
-            printf(" %c", BB_IS_SET_AT(bb, square) ? 'X' : '.');
+            // print X for 1, . for 0
+            std::cout << (BB_IS_SET_AT(bb, square) ? " X" : " .");
         }
 
-        printf("\n");
+        std::cout << "\n";
     }
 
-    // file info + space
-    printf("\n\t a b c d e f g h\n\n");
+    // file label + space
+    std::cout << "\n\t a b c d e f g h\n\n";
 }

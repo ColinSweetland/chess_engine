@@ -1,5 +1,5 @@
 CC		:= clang++
-CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -g -mbmi2 -std=c++17 -O3 -MMD -MP
+CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -Wno-gnu-case-range -g -mbmi2 -std=c++17 -O1 -MMD -MP
 
 SRC_DIR	:= src
 OBJ_DIR	:= obj

@@ -2,8 +2,13 @@
 #define TYPES_INCL
 
 #include <cinttypes>
+#include <string>
+#include <unordered_map>
 
 /* This file will define the basic types used in the engine */
+
+// alias for stdlib string
+using str = std::string;
 
 using bitboard = std::uint64_t;
 
@@ -20,9 +25,9 @@ enum COLOR
 enum DIR
 {
     NORTH = 8,
-    EAST = 1,
+    EAST  = 1,
     SOUTH = -NORTH,
-    WEST = -EAST,
+    WEST  = -EAST,
 
     NORTHWEST = NORTH + WEST,
     NORTHEAST = NORTH + EAST,
@@ -30,12 +35,12 @@ enum DIR
     SOUTHWEST = SOUTH + WEST,
 };
 
-#define PAWN_PUSH_DIR(color) ((color) ? SOUTH : NORTH)
+inline DIR PAWN_PUSH_DIR(COLOR c) { return c ? SOUTH : NORTH; }
 
 enum PIECE
 {
-    NONE_PIECE = -1,
-    PAWN = 2, // start at two because index 0 & 1 represent color, the enum above
+    NO_PIECE = -1,
+    PAWN     = 2, // start at two because index 0 & 1 represent color
     KNIGHT,
     BISHOP,
     ROOK,
@@ -44,32 +49,29 @@ enum PIECE
     EN_PASSANTE
 };
 
+const std::unordered_map<char, PIECE> char_to_piece{{'p', PAWN}, {'n', KNIGHT}, {'b', BISHOP},
+                                                    {'r', ROOK}, {'q', QUEEN},  {'k', KING}};
+
+const std::unordered_map<int, char> piece_to_char{{WHITE, 'w'},       {BLACK, 'b'},   {PAWN, 'p'},  {KNIGHT, 'n'},
+                                                  {BISHOP, 'b'},      {ROOK, 'r'},    {QUEEN, 'q'}, {KING, 'k'},
+                                                  {EN_PASSANTE, 'e'}, {NO_PIECE, '.'}};
+
 enum CASTLE_RIGHT
 {
-    WQS = 1,
-    WKS = 2,
-    BQS = 4,
-    BKS = 8,
+    NO_RIGHTS = 0,
+    WQS       = 1,
+    WKS       = 2,
+    BQS       = 4,
+    BKS       = 8,
 
     WCR = WQS | WKS,
     BCR = BQS | BKS
 };
 
-struct game_state
-{
-    bitboard bitboards[9]; // two for color, 6 for pieces, 1 for enpassante sq
-    char castle_rights;
-
-    unsigned int reversible_move_counter;
-    unsigned int full_move_counter;
-
-    COLOR side_to_move;
-};
-
 struct chess_move
 {
-    square origin;
-    square dest;
+    square from_sq;
+    square to_sq;
 
     PIECE movedp;
     PIECE captp;
