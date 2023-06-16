@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "bitboard.h"
+#include "movegen.h"
 #include "position.h"
 #include "types.h"
 // #include "movegen.h"
@@ -40,27 +41,38 @@ void uci_engine_loop(void)
 }
 */
 
-/*
 void init(void)
 {
     init_rook_tables();
     init_bishop_tables();
 }
-*/
 
 int main(void)
 {
-    // init();
+    init();
 
-    Position pos{"rnbqkbnr/pp1ppppp/8/2p5/1P2P3/8/P1PP1PPP/RNBQKB1R b KQkq f6 1 2"};
-    // Position pos{};
+    // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1"};
+    Position pos{"r3k2r/p6p/8/8/P7/bq6/P1P4P/B3K2R b KQkq - 0 1"};
 
-    // uci_engine_loop();
+    int mvcnt;
+
+    auto ml = pos.pseudo_legal_moves(mvcnt);
+    int  i  = 0;
+
+    for (auto m : ml)
+    {
+        i++;
+        std::cout << i << " " << m;
+
+        if (i >= mvcnt)
+            break;
+    }
 
     std::cout << pos;
+    // pos.dbg_print();
     std::cout << pos.FEN();
 
-    pos.dbg_print();
+    print_bb(bb_queen_moves(17, pos.pieces()) & ~pos.pieces(pos.side_to_move()));
 
     return 0;
 }

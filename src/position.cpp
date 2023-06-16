@@ -5,6 +5,7 @@
 
 #include "bitboard.h"
 // #include "movegen.h"
+#include "movegen.h"
 #include "position.h"
 #include "types.h"
 
@@ -133,14 +134,16 @@ PIECE Position::piece_at_sq(int sq) const
     return NO_PIECE;
 }
 
-/*
-bool sq_attacked(const game_state* gs, int sq, COLOR attacking_color)
+bool Position::sq_attacked(int sq, COLOR attacking_color) const
 {
     // opposite of how att pawns move
-    int      pawn_att_dir = attacking_color == BLACK ? NORTH : SOUTH;
-    bitboard enemy_pawns  = gs->bitboards[attacking_color] & gs->bitboards[PAWN];
+    int      pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
+    bitboard enemy_pawns  = pieces(attacking_color, PAWN);
 
+    // enemy pawn attack from east side
     bitboard potential_pawn_att_sqs = BB_SQ(sq + pawn_att_dir + EAST) & ~BB_FILE_A;
+
+    // from west
     potential_pawn_att_sqs |= BB_SQ(sq + pawn_att_dir + WEST) & ~BB_FILE_H;
 
     // check for pawn attackers
@@ -150,13 +153,13 @@ bool sq_attacked(const game_state* gs, int sq, COLOR attacking_color)
     }
 
     // check for knight attackers
-    if (bb_knight_moves(sq) & gs->bitboards[KNIGHT] & gs->bitboards[attacking_color])
+    if (bb_knight_moves(sq) & pieces(attacking_color, KNIGHT))
     {
         return true;
     }
 
     // check for king attacker
-    if (bb_king_moves(sq) & gs->bitboards[KING] & gs->bitboards[attacking_color])
+    if (bb_king_moves(sq) & pieces(attacking_color, KING))
     {
         return true;
     }
@@ -164,13 +167,13 @@ bool sq_attacked(const game_state* gs, int sq, COLOR attacking_color)
     // check for rook / queen attackers
 
     // rook moves from kings square
-    bitboard rook_attkrs = bb_rook_moves(sq, gs->bitboards[BLACK] | gs->bitboards[WHITE]);
+    bitboard rook_attkrs = bb_rook_moves(sq, pieces());
 
     // opposite pieces
-    rook_attkrs &= gs->bitboards[attacking_color];
+    rook_attkrs &= pieces(attacking_color);
 
     // Rook or Queen
-    rook_attkrs &= gs->bitboards[ROOK] | gs->bitboards[QUEEN];
+    rook_attkrs &= pieces(ROOK) | pieces(QUEEN);
 
     if (rook_attkrs)
     {
@@ -178,14 +181,13 @@ bool sq_attacked(const game_state* gs, int sq, COLOR attacking_color)
     }
 
     // Bishop or Queen
-    bitboard bsh_attkrs = bb_bishop_moves(sq, gs->bitboards[BLACK] | gs->bitboards[WHITE]);
+    bitboard bsh_attkrs = bb_bishop_moves(sq, pieces());
 
-    bsh_attkrs &= gs->bitboards[attacking_color];
-    bsh_attkrs &= gs->bitboards[BISHOP] | gs->bitboards[QUEEN];
+    bsh_attkrs &= pieces(attacking_color);
+    bsh_attkrs &= pieces(BISHOP) | pieces(QUEEN);
 
     return bsh_attkrs;
 }
-*/
 
 // Forsyth Edwards Notation is a common string based representation of a chess position
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation

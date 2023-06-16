@@ -1,35 +1,28 @@
-#ifndef MOVEGEN_INCLUDED
-#define MOVEGEN_INCLUDED
+#ifndef MOVEGEN_INCL
+#define MOVEGEN_INCL
 
 #include "bitboard.h"
-#include "game_state.h"
+#include "types.h"
 
 //--------------MOVES-------------------
 
-void print_move(const chess_move move);
-
-int gen_all_moves(const game_state *gs, chess_move *ml);
-
-void make_move(game_state *gs, chess_move move);
-
-void unmake_move(game_state *gs, chess_move move);
-
+std::ostream& operator<<(std::ostream& out, const chess_move& move);
 // parse move in long algebraic notation
-chess_move *parse_move(char *movestring);
+chess_move parse_move(char* movestring);
 
 // ----- BISHOP MOVES-----
 void init_bishop_tables(void);
 
-bitboard bb_bishop_moves(int sq, bitboard blockers);
+bitboard bb_bishop_moves(int sq, const bitboard& blockers);
 
 // ----- ROOK MOVES-----
 void init_rook_tables(void);
 
-bitboard bb_rook_moves(int sq, bitboard blockers);
+bitboard bb_rook_moves(square sq, const bitboard& blockers);
 
 // ----- QUEEN MOVES -----
 
-bitboard bb_queen_moves(int sq, bitboard blockers);
+bitboard bb_queen_moves(square sq, const bitboard& blockers);
 
 // ----- KING MOVES -----
 bitboard bb_king_moves(int sq);
@@ -39,11 +32,12 @@ bitboard bb_knight_moves(int sq);
 
 // ----- PAWN MOVES -----
 // 1. Attacks
-bitboard bb_pawn_attacks_e(const game_state *gs, COLOR side_to_move);
-bitboard bb_pawn_attacks_w(const game_state *gs, COLOR side_to_move);
+bitboard bb_pawn_attacks_e(const bitboard& pawns, const bitboard& attackable, COLOR moving);
+bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, COLOR moving);
+
 // 2. Moves
-bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move);
+bitboard bb_pawn_single_moves(const bitboard& pawns, const bitboard& blockers, COLOR side_to_move);
 
-bitboard bb_pawn_double_moves(bitboard single_moves, bitboard blockers, COLOR side_to_move);
+bitboard bb_pawn_double_moves(const bitboard& single_moves, const bitboard& blockers, COLOR side_to_move);
 
-#endif
+#endif // MOVEGEN_INCL

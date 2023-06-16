@@ -4,10 +4,10 @@
 #include "types.h"
 
 #include <cassert>
-#include <x86intrin.h>
+#include <immintrin.h>
 // empty: all zeroes
 
-constexpr bitboard BB_ZERO{0ULL};
+constexpr bitboard BB_ZERO = {0ULL};
 
 // bb at a certain square
 // maybe we could use a lookup table later
@@ -56,27 +56,27 @@ constexpr bitboard BB_PDEP(const bitboard& bb, const bitboard& mask) { return _p
 // bit count
 constexpr int BB_POPCNT(const bitboard& bb) { return __builtin_popcountll(bb); }
 
-inline bitboard GEN_SHIFT(const bitboard& bb, const bitboard& dir) { return dir > 0 ? (bb << dir) : (bb >> (-dir)); }
+inline bitboard GEN_SHIFT(const bitboard& bb, const DIR dir) { return dir > 0 ? (bb << dir) : (bb >> (-dir)); }
 
 // each board row
-constexpr bitboard BB_RANK_1{0x00000000000000FFULL};
-constexpr bitboard BB_RANK_2{0x000000000000FF00ULL};
-constexpr bitboard BB_RANK_3{0x0000000000FF0000ULL};
-constexpr bitboard BB_RANK_4{0x00000000FF000000ULL};
-constexpr bitboard BB_RANK_5{0x000000FF00000000ULL};
-constexpr bitboard BB_RANK_6{0x0000FF0000000000ULL};
-constexpr bitboard BB_RANK_7{0x00FF000000000000ULL};
-constexpr bitboard BB_RANK_8{0xFF00000000000000ULL};
+constexpr bitboard BB_RANK_1 = {0x00000000000000FFULL};
+constexpr bitboard BB_RANK_2 = {0x000000000000FF00ULL};
+constexpr bitboard BB_RANK_3 = {0x0000000000FF0000ULL};
+constexpr bitboard BB_RANK_4 = {0x00000000FF000000ULL};
+constexpr bitboard BB_RANK_5 = {0x000000FF00000000ULL};
+constexpr bitboard BB_RANK_6 = {0x0000FF0000000000ULL};
+constexpr bitboard BB_RANK_7 = {0x00FF000000000000ULL};
+constexpr bitboard BB_RANK_8 = {0xFF00000000000000ULL};
 
 // each board file/column
-constexpr bitboard BB_FILE_A{0x0101010101010101ULL};
-constexpr bitboard BB_FILE_B{0x0202020202020202ULL};
-constexpr bitboard BB_FILE_C{0x0404040404040404ULL};
-constexpr bitboard BB_FILE_D{0x0808080808080808ULL};
-constexpr bitboard BB_FILE_E{0x1010101010101010ULL};
-constexpr bitboard BB_FILE_F{0x2020202020202020ULL};
-constexpr bitboard BB_FILE_G{0x4040404040404040ULL};
-constexpr bitboard BB_FILE_H{0x8080808080808080ULL};
+constexpr bitboard BB_FILE_A = {0x0101010101010101ULL};
+constexpr bitboard BB_FILE_B = {0x0202020202020202ULL};
+constexpr bitboard BB_FILE_C = {0x0404040404040404ULL};
+constexpr bitboard BB_FILE_D = {0x0808080808080808ULL};
+constexpr bitboard BB_FILE_E = {0x1010101010101010ULL};
+constexpr bitboard BB_FILE_F = {0x2020202020202020ULL};
+constexpr bitboard BB_FILE_G = {0x4040404040404040ULL};
+constexpr bitboard BB_FILE_H = {0x8080808080808080ULL};
 
 // hex print
 inline void hprint_bb(bitboard& b) { printf("0x%016lx", b); }

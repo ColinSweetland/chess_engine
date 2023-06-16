@@ -35,6 +35,17 @@ class Position
 
     bool sq_attacked(int sq, COLOR attacking_color) const;
 
+    // returns all pseudolegal moves, also sets move_count to number of moves generated
+    std::array<chess_move, MAX_GENERATABLE_MOVES> pseudo_legal_moves(int& move_count) const;
+
+    void make_move(chess_move c);
+    void unmake_last();
+
+    inline bitboard        pieces() const { return pos_bbs[WHITE] | pos_bbs[BLACK]; }
+    inline const bitboard& pieces(COLOR c) const { return pos_bbs[c]; }
+    inline const bitboard& pieces(PIECE p) const { return pos_bbs[p]; }
+    inline bitboard        pieces(COLOR c, PIECE p) const { return pos_bbs[c] & pos_bbs[p]; }
+
     str FEN() const;
 
     inline void print_bitboard(int bb) const { print_bb(pos_bbs[bb]); }

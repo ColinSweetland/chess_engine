@@ -2,6 +2,7 @@
 #define TYPES_INCL
 
 #include <cinttypes>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -11,6 +12,8 @@
 using str = std::string;
 
 using bitboard = std::uint64_t;
+
+const int MAX_GENERATABLE_MOVES = {256};
 
 // 0-63 square on bitboard, from a1 to h8. -1 used for no square
 using square = int;
@@ -49,12 +52,16 @@ enum PIECE
     EN_PASSANTE
 };
 
-const std::unordered_map<char, PIECE> char_to_piece{{'p', PAWN}, {'n', KNIGHT}, {'b', BISHOP},
-                                                    {'r', ROOK}, {'q', QUEEN},  {'k', KING}};
+const std::unordered_map<char, PIECE> char_to_piece = {{'p', PAWN}, {'n', KNIGHT}, {'b', BISHOP},
+                                                       {'r', ROOK}, {'q', QUEEN},  {'k', KING}};
 
-const std::unordered_map<int, char> piece_to_char{{WHITE, 'w'},       {BLACK, 'b'},   {PAWN, 'p'},  {KNIGHT, 'n'},
-                                                  {BISHOP, 'b'},      {ROOK, 'r'},    {QUEEN, 'q'}, {KING, 'k'},
-                                                  {EN_PASSANTE, 'e'}, {NO_PIECE, '.'}};
+const std::unordered_map<int, char> piece_to_char = {{WHITE, 'w'},       {BLACK, 'b'},   {PAWN, 'p'},  {KNIGHT, 'n'},
+                                                     {BISHOP, 'b'},      {ROOK, 'r'},    {QUEEN, 'q'}, {KING, 'k'},
+                                                     {EN_PASSANTE, 'e'}, {NO_PIECE, '.'}};
+
+const std::unordered_map<int, str> piece_to_str = {
+    {WHITE, "WHITE"}, {BLACK, "BLACK"}, {PAWN, "PAWN"}, {KNIGHT, "KNIGHT"},           {BISHOP, "BISHOP"},
+    {ROOK, "ROOK"},   {QUEEN, "QUEEN"}, {KING, "KING"}, {EN_PASSANTE, "EN_PASSANTE"}, {NO_PIECE, "NO_PIECE"}};
 
 enum CASTLE_RIGHT
 {

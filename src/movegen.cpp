@@ -1,138 +1,91 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
 // need for PEXT/PDEP
+#include <array>
 #include <x86intrin.h>
 
+#include <iostream>
+
 #include "bitboard.h"
-#include "game_state.h"
 #include "movegen.h"
+#include "position.h"
 #include "types.h"
 
 // when we shift east/west, wrapping can happen. To avoid this, we have to mask a row
-static const bitboard e_mask = ~BB_FILE_A;
-static const bitboard w_mask = ~BB_FILE_H;
-
-static int is_within_inc(int num, int low, int high)
-{
-    return num >= low && num <= high;
-}
+static constexpr bitboard e_mask = ~BB_FILE_A;
+static constexpr bitboard w_mask = ~BB_FILE_H;
 
 // ---------------- MOVES ---------------------------
 
-void print_move(const chess_move move)
+std::ostream& operator<<(std::ostream& out, const chess_move& move)
 {
 
-    // index with PIECE - PAWN
-    const char *piece_name_map[7] = {"Pawn", "Knight", "Bishop", "Rook", "Queen", "King", "En Passante"};
-
     // promo or castle move
-    if (move.promo != NONE_PIECE)
+    if (move.promo != NO_PIECE)
     {
+        void print_move(const chess_move&);
+
         switch (move.movedp)
         {
 
         case PAWN: // pawn promotion
-            printf("Pawn on %c%c ", FILE_CHAR_FROM_SQ(move.origin), RANK_CHAR_FROM_SQ(move.origin));
-            printf("moves to %c%c ", FILE_CHAR_FROM_SQ(move.dest), RANK_CHAR_FROM_SQ(move.dest));
-            printf("and promotes to %s\n", piece_name_map[move.promo - PAWN]);
+            out << "Pawn on " << FILE_CHAR_FROM_SQ(move.from_sq) << RANK_CHAR_FROM_SQ(move.from_sq);
+            out << " moves to " << FILE_CHAR_FROM_SQ(move.to_sq) << RANK_CHAR_FROM_SQ(move.to_sq);
+            out << " and promotes to " << piece_to_str.at(move.promo) << '\n';
             break;
 
         case KING:
-            printf("King castles %sside\n", piece_name_map[move.promo - PAWN]);
+            out << "King castles " << piece_to_str.at(move.promo) << "side\n";
             break;
 
         default:
-            fprintf(stderr, "Unexpected moving piece %s when move promo field set to %s\n",
-                    piece_name_map[move.movedp - PAWN], piece_name_map[move.promo - PAWN]);
+            std::cerr << "Unexpected moving piece " << piece_to_str.at(move.movedp) << " when move promo field set to "
+                      << piece_to_str.at(move.promo) << '\n';
+            std::cerr << "File: " << __FILE__ << " line: " << __LINE__ << '\n';
             exit(1);
             break;
         }
 
-        return;
+        return out;
     }
 
-    printf("%s ", piece_name_map[move.movedp - PAWN]);
-    printf("on %c%c ", FILE_CHAR_FROM_SQ(move.origin), RANK_CHAR_FROM_SQ(move.origin));
+    out << piece_to_str.at(move.movedp) << " on " << FILE_CHAR_FROM_SQ(move.from_sq) << RANK_CHAR_FROM_SQ(move.from_sq);
 
-    if (move.captp == NONE_PIECE)
+    if (move.captp == NO_PIECE)
     {
-        printf("moves to ");
+        out << " moves to ";
     }
     else
     {
-        printf("Captures %s on ", piece_name_map[move.captp - PAWN]);
+        out << " Captures " << piece_to_str.at(move.captp) << " on ";
     }
 
-    printf("%c%c\n", FILE_CHAR_FROM_SQ(move.dest), RANK_CHAR_FROM_SQ(move.dest));
-}
+    out << FILE_CHAR_FROM_SQ(move.to_sq) << RANK_CHAR_FROM_SQ(move.to_sq) << '\n';
 
-// parse a move in the UCI format ("Long Algebraic notation") e.g. a2a4 or b7b8Q
-chess_move *parse_move(char *movestring)
-{
-    const char *promotions = "NBRQ"; // all promotable pieces
-    chess_move *move = (chess_move *)malloc(sizeof(chess_move));
-    int idx = 0;
-
-    // FROM SQUARE
-    if (!is_within_inc(movestring[idx], 'a', 'h') || !is_within_inc(movestring[idx + 1], '1', '8'))
-    {
-        goto PARSE_ERR;
-    }
-
-    move->origin = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
-
-    idx += 2;
-
-    // TO SQUARE
-    if (!is_within_inc(movestring[idx], 'a', 'h') || !is_within_inc(movestring[idx + 1], '1', '8'))
-    {
-        goto PARSE_ERR;
-    }
-
-    move->dest = (movestring[idx] - 'a') + (movestring[idx + 1] - '1') * 8;
-
-    idx += 2;
-
-    // PROMOTION
-    for (int i = 0; i < 4; i++)
-    {
-        if (promotions[i] == movestring[idx])
-        {
-            move->promo = (PIECE)(KNIGHT + i);
-        }
-    }
-
-    // wasn't assigned and it's not a space or NULL string = ERR
-    if (move->promo == -1 && !(isspace(movestring[idx]) || movestring[idx] == '\0'))
-    {
-        goto PARSE_ERR;
-    }
-
-    return move;
-
-PARSE_ERR:
-    fprintf(stderr, "ERR: CAN'T PARSE MOVE \"%s\" \n", movestring);
-    fprintf(stderr, "EXITING\n");
-    exit(1);
+    return out;
 }
 
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
-int gen_all_moves(const game_state *gs, chess_move *ml)
+std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& move_count) const
 {
-    int move_idx = 0;
+    std::array<chess_move, MAX_GENERATABLE_MOVES> pl_moves;
 
-    const COLOR side_moving = gs->side_to_move;
-    const bitboard occ = gs->bitboards[WHITE] | gs->bitboards[BLACK];
+    move_count = 0;
 
-    const bitboard pawns = gs->bitboards[PAWN] & gs->bitboards[side_moving];
+    chess_move m;
 
-    bitboard p_single = bb_pawn_single_moves(pawns, occ, side_moving);
-    bitboard p_double = bb_pawn_double_moves(p_single, occ, side_moving);
-    bitboard p_att_e = bb_pawn_attacks_e(gs, side_moving);
-    bitboard p_att_w = bb_pawn_attacks_w(gs, side_moving);
+    const bitboard occ   = pieces();
+    const bitboard pawns = pieces(stm, PAWN);
 
-    DIR pawn_push_dir = PAWN_PUSH_DIR(side_moving);
+    // only used for pawns
+    const bitboard enemy_pieces = pieces(static_cast<COLOR>(!stm)) | pieces(EN_PASSANTE);
+
+    const bitboard moveable_squares = ~pieces(stm);
+
+    bitboard p_single = bb_pawn_single_moves(pawns, occ, stm);
+    bitboard p_double = bb_pawn_double_moves(p_single, occ, stm);
+    bitboard p_att_e  = bb_pawn_attacks_e(pawns, enemy_pieces, stm);
+    bitboard p_att_w  = bb_pawn_attacks_w(pawns, enemy_pieces, stm);
+
+    DIR pawn_push_dir = PAWN_PUSH_DIR(stm);
 
     // --- PAWNS ---
 
@@ -143,13 +96,13 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int sq = BB_LSB(p_single);
         BB_UNSET_LSB(p_single);
 
-        ml[move_idx].movedp = PAWN;
-        ml[move_idx].captp = NONE_PIECE;
-        ml[move_idx].dest = sq;
-        ml[move_idx].origin = sq - pawn_push_dir;
-        ml[move_idx].promo = NONE_PIECE;
+        pl_moves[move_count].movedp  = PAWN;
+        pl_moves[move_count].captp   = NO_PIECE;
+        pl_moves[move_count].to_sq   = sq;
+        pl_moves[move_count].from_sq = sq - pawn_push_dir;
+        pl_moves[move_count].promo   = NO_PIECE;
 
-        move_idx++;
+        move_count++;
     }
 
     // double pawn pushes
@@ -159,13 +112,13 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int sq = BB_LSB(p_double);
         BB_UNSET_LSB(p_double);
 
-        ml[move_idx].movedp = PAWN;
-        ml[move_idx].captp = NONE_PIECE;
-        ml[move_idx].dest = sq;
-        ml[move_idx].origin = sq - pawn_push_dir * 2;
-        ml[move_idx].promo = NONE_PIECE;
+        pl_moves[move_count].movedp  = PAWN;
+        pl_moves[move_count].captp   = NO_PIECE;
+        pl_moves[move_count].to_sq   = sq;
+        pl_moves[move_count].from_sq = sq - pawn_push_dir * 2;
+        pl_moves[move_count].promo   = NO_PIECE;
 
-        move_idx++;
+        move_count++;
     }
 
     while (p_att_e != BB_ZERO)
@@ -174,20 +127,18 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int sq = BB_LSB(p_att_e);
         BB_UNSET_LSB(p_att_e);
 
-        ml[move_idx].movedp = PAWN;
-        ml[move_idx].captp = piece_at_sq(gs, sq);
+        pl_moves[move_count].movedp = PAWN;
+        pl_moves[move_count].captp  = piece_at_sq(sq);
 
         // we need this if for pawns.. unfortunately
-        if (ml[move_idx].captp == NONE_PIECE)
-        {
-            ml[move_idx].captp = EN_PASSANTE;
-        }
+        if (pl_moves[move_count].captp == NO_PIECE)
+            pl_moves[move_count].captp = EN_PASSANTE;
 
-        ml[move_idx].dest = sq;
-        ml[move_idx].origin = sq - (pawn_push_dir + EAST);
-        ml[move_idx].promo = NONE_PIECE;
+        pl_moves[move_count].to_sq   = sq;
+        pl_moves[move_count].from_sq = sq - (pawn_push_dir + EAST);
+        pl_moves[move_count].promo   = NO_PIECE;
 
-        move_idx++;
+        move_count++;
     }
 
     while (p_att_w != BB_ZERO)
@@ -196,25 +147,23 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int sq = BB_LSB(p_att_w);
         BB_UNSET_LSB(p_att_w);
 
-        ml[move_idx].movedp = PAWN;
-        ml[move_idx].captp = piece_at_sq(gs, sq);
+        pl_moves[move_count].movedp = PAWN;
+        pl_moves[move_count].captp  = piece_at_sq(sq);
 
         // we need this if just for pawns.. unfortunately
-        if (ml[move_idx].captp == NONE_PIECE)
-        {
-            ml[move_idx].captp = EN_PASSANTE;
-        }
+        if (pl_moves[move_count].captp == NO_PIECE)
+            pl_moves[move_count].captp = EN_PASSANTE;
 
-        ml[move_idx].dest = sq;
-        ml[move_idx].origin = sq - (pawn_push_dir + WEST);
-        ml[move_idx].promo = NONE_PIECE;
+        pl_moves[move_count].to_sq   = sq;
+        pl_moves[move_count].from_sq = sq - (pawn_push_dir + WEST);
+        pl_moves[move_count].promo   = NO_PIECE;
 
-        move_idx++;
+        move_count++;
     }
 
     // --- KNIGHTS ---
 
-    bitboard kn = gs->bitboards[KNIGHT] & gs->bitboards[side_moving];
+    bitboard kn       = pieces(stm, KNIGHT);
     bitboard kn_moves = BB_ZERO;
 
     while (kn != BB_ZERO)
@@ -222,26 +171,26 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int kn_sq = BB_LSB(kn);
         BB_UNSET_LSB(kn);
 
-        kn_moves = bb_knight_moves(kn_sq) & ~gs->bitboards[side_moving];
+        kn_moves = bb_knight_moves(kn_sq) & moveable_squares;
 
         while (kn_moves != BB_ZERO)
         {
             int sq = BB_LSB(kn_moves);
             BB_UNSET_LSB(kn_moves);
 
-            ml[move_idx].movedp = KNIGHT;
-            ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].dest = sq;
-            ml[move_idx].origin = kn_sq;
-            ml[move_idx].promo = NONE_PIECE;
+            pl_moves[move_count].movedp  = KNIGHT;
+            pl_moves[move_count].captp   = piece_at_sq(sq);
+            pl_moves[move_count].to_sq   = sq;
+            pl_moves[move_count].from_sq = kn_sq;
+            pl_moves[move_count].promo   = NO_PIECE;
 
-            move_idx++;
+            move_count++;
         }
     }
 
     // --- BISHOPS ---
 
-    bitboard bsh = gs->bitboards[BISHOP] & gs->bitboards[side_moving];
+    bitboard bsh       = pieces(stm, BISHOP);
     bitboard bsh_moves = BB_ZERO;
 
     while (bsh != BB_ZERO)
@@ -249,26 +198,26 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int bsh_sq = BB_LSB(bsh);
         BB_UNSET_LSB(bsh);
 
-        bsh_moves = bb_bishop_moves(bsh_sq, occ) & ~gs->bitboards[side_moving];
+        bsh_moves = bb_bishop_moves(bsh_sq, occ) & moveable_squares;
 
         while (bsh_moves != BB_ZERO)
         {
             int sq = BB_LSB(bsh_moves);
             BB_UNSET_LSB(bsh_moves);
 
-            ml[move_idx].movedp = BISHOP;
-            ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].dest = sq;
-            ml[move_idx].origin = bsh_sq;
-            ml[move_idx].promo = NONE_PIECE;
+            pl_moves[move_count].movedp  = BISHOP;
+            pl_moves[move_count].captp   = piece_at_sq(sq);
+            pl_moves[move_count].to_sq   = sq;
+            pl_moves[move_count].from_sq = bsh_sq;
+            pl_moves[move_count].promo   = NO_PIECE;
 
-            move_idx++;
+            move_count++;
         }
     }
 
     // --- ROOKS ---
 
-    bitboard rk = gs->bitboards[ROOK] & gs->bitboards[side_moving];
+    bitboard rk       = pieces(stm, ROOK);
     bitboard rk_moves = BB_ZERO;
 
     while (rk != BB_ZERO)
@@ -276,26 +225,27 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int rk_sq = BB_LSB(rk);
         BB_UNSET_LSB(rk);
 
-        rk_moves = bb_rook_moves(rk_sq, occ) & ~gs->bitboards[side_moving];
+        rk_moves = bb_rook_moves(rk_sq, occ) & moveable_squares;
 
         while (rk_moves != BB_ZERO)
         {
             int sq = BB_LSB(rk_moves);
             BB_UNSET_LSB(rk_moves);
 
-            ml[move_idx].movedp = ROOK;
-            ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].dest = sq;
-            ml[move_idx].origin = rk_sq;
-            ml[move_idx].promo = NONE_PIECE;
+            pl_moves[move_count].movedp  = ROOK;
+            pl_moves[move_count].captp   = piece_at_sq(sq);
+            pl_moves[move_count].to_sq   = sq;
+            pl_moves[move_count].from_sq = rk_sq;
+            pl_moves[move_count].promo   = NO_PIECE;
 
-            move_idx++;
+            move_count++;
         }
     }
 
     // --- QUEENS ---
 
-    bitboard qn = gs->bitboards[QUEEN] & gs->bitboards[side_moving];
+    bitboard qn = pieces(stm, QUEEN);
+
     bitboard qn_moves = BB_ZERO;
 
     while (qn != BB_ZERO)
@@ -303,199 +253,162 @@ int gen_all_moves(const game_state *gs, chess_move *ml)
         int qn_sq = BB_LSB(qn);
         BB_UNSET_LSB(qn);
 
-        qn_moves = bb_queen_moves(qn_sq, occ) & ~gs->bitboards[side_moving];
+        qn_moves = bb_queen_moves(qn_sq, occ) & moveable_squares;
 
         while (qn_moves != BB_ZERO)
         {
             int sq = BB_LSB(qn_moves);
             BB_UNSET_LSB(qn_moves);
 
-            ml[move_idx].movedp = QUEEN;
-            ml[move_idx].captp = piece_at_sq(gs, sq);
-            ml[move_idx].dest = sq;
-            ml[move_idx].origin = qn_sq;
-            ml[move_idx].promo = NONE_PIECE;
+            pl_moves[move_count].movedp  = QUEEN;
+            pl_moves[move_count].captp   = piece_at_sq(sq);
+            pl_moves[move_count].to_sq   = sq;
+            pl_moves[move_count].from_sq = qn_sq;
+            pl_moves[move_count].promo   = NO_PIECE;
 
-            move_idx++;
+            move_count++;
         }
     }
 
     // --- KING ---
 
-    bitboard kng = gs->bitboards[KING] & gs->bitboards[side_moving];
+    bitboard kng = pieces(stm, KING);
+
     int kng_sq = BB_LSB(kng);
 
-    bitboard kng_moves = bb_king_moves(kng_sq) & ~gs->bitboards[side_moving];
+    bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
 
     while (kng_moves != BB_ZERO)
     {
         int sq = BB_LSB(kng_moves);
         BB_UNSET_LSB(kng_moves);
 
-        ml[move_idx].movedp = KING;
-        ml[move_idx].captp = piece_at_sq(gs, sq);
-        ml[move_idx].dest = sq;
-        ml[move_idx].origin = kng_sq;
-        ml[move_idx].promo = NONE_PIECE;
+        pl_moves[move_count].movedp  = KING;
+        pl_moves[move_count].captp   = piece_at_sq(sq);
+        pl_moves[move_count].to_sq   = sq;
+        pl_moves[move_count].from_sq = kng_sq;
+        pl_moves[move_count].promo   = NO_PIECE;
 
-        move_idx++;
+        move_count++;
     }
 
     // --- CASTLING ---
 
     // this will give us the castle rights of the moving side only
     // so even if we are black, we still use "white" here in this section
-    char moving_cr = ((gs->castle_rights) >> (side_moving * 2)) & WCR;
+    char moving_cr = ((castle_r) >> (stm * 2)) & WCR;
 
     // kingside
     if (moving_cr & WKS)
     {
         // squares between rook and king must be free
         // aka the kingside rook can attack our king
-        int kingside_rooksq = side_moving == BLACK ? 63 : 7;
+        int kingside_rooksq = stm == BLACK ? 63 : 7;
 
         bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
 
         // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(gs, kng_sq + EAST, (COLOR)!side_moving)
-                     || sq_attacked(gs, kng_sq + (EAST * 2), (COLOR)!side_moving);
+        bool attacked = sq_attacked(kng_sq + EAST, static_cast<COLOR>(!stm))
+                     || sq_attacked(kng_sq + (EAST * 2), static_cast<COLOR>(!stm));
 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
         {
-            ml[move_idx].movedp = KING;
-            ml[move_idx].captp = NONE_PIECE;
-            ml[move_idx].dest = kng_sq + (EAST * 2);
-            ml[move_idx].origin = kng_sq;
+            pl_moves[move_count].movedp  = KING;
+            pl_moves[move_count].captp   = NO_PIECE;
+            pl_moves[move_count].to_sq   = kng_sq + (EAST * 2);
+            pl_moves[move_count].from_sq = kng_sq;
 
             // how to indicate kingside castle
-            ml[move_idx].promo = KING;
+            pl_moves[move_count].promo = KING;
 
-            move_idx++;
+            move_count++;
         }
     }
 
     // Queenside, see comments above
     if (moving_cr & WQS)
     {
-        int queenside_rooksq = side_moving == BLACK ? 56 : 0;
+        int queenside_rooksq = stm == BLACK ? 56 : 0;
 
         bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
 
-        bool attacked = sq_attacked(gs, kng_sq + WEST, (COLOR)!side_moving)
-                     || sq_attacked(gs, kng_sq + (WEST * 2), (COLOR)!side_moving);
+        bool attacked = sq_attacked(kng_sq + WEST, static_cast<COLOR>(!stm))
+                     || sq_attacked(kng_sq + (WEST * 2), static_cast<COLOR>(!stm));
 
         if (spaces_free & !attacked)
         {
-            ml[move_idx].movedp = KING;
-            ml[move_idx].captp = NONE_PIECE;
-            ml[move_idx].dest = kng_sq + (WEST * 2);
-            ml[move_idx].origin = kng_sq;
+            pl_moves[move_count].movedp  = KING;
+            pl_moves[move_count].captp   = NO_PIECE;
+            pl_moves[move_count].to_sq   = kng_sq + (WEST * 2);
+            pl_moves[move_count].from_sq = kng_sq;
 
-            ml[move_idx].promo = QUEEN;
+            pl_moves[move_count].promo = QUEEN;
 
-            move_idx++;
+            move_count++;
         }
     }
 
-    return move_idx;
+    return pl_moves;
 }
 
-void make_move(game_state *gs, chess_move move)
+void Position::make_move(chess_move c)
 {
     // TODO: if we double push a pawn- update enpassante
     //  I think the best way to do this is with a flag
 
     // move the moved piece
-    BB_UNSET(gs->bitboards[move.movedp], move.origin);
-    BB_UNSET(gs->bitboards[gs->side_to_move], move.origin);
+    BB_UNSET(pos_bbs[c.movedp], c.from_sq);
+    BB_UNSET(pos_bbs[stm], c.from_sq);
 
-    BB_SET(gs->bitboards[move.movedp], move.dest);
-    BB_SET(gs->bitboards[gs->side_to_move], move.dest);
+    BB_SET(pos_bbs[c.movedp], c.to_sq);
+    BB_SET(pos_bbs[stm], c.to_sq);
 
     // increment rev move counter (it will get reset if it needs to)
-    gs->reversible_move_counter += 1;
+    rev_moves += 1;
 
     // moving pawns is not reversible
-    if (move.movedp == PAWN)
-        gs->reversible_move_counter = 0;
+    if (c.movedp == PAWN)
+        rev_moves = 0;
 
     // en passante is always cleared after a move
-    gs->bitboards[EN_PASSANTE] &= BB_ZERO;
+    pos_bbs[EN_PASSANTE] &= BB_ZERO;
 
     // unset the captured piece if there is one & reset rev move counter
-    switch (move.captp)
+    switch (c.captp)
     {
-    case NONE_PIECE:
+    case NO_PIECE:
         break;
     case EN_PASSANTE:
-        gs->reversible_move_counter = 0;
-        BB_UNSET(gs->bitboards[PAWN], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
-        BB_UNSET(gs->bitboards[!gs->side_to_move], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
+        rev_moves = 0;
+        BB_UNSET(pos_bbs[PAWN], c.to_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
+        BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], c.to_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
         break;
     default:
-        gs->reversible_move_counter = 0;
-        BB_UNSET(gs->bitboards[move.captp], move.dest);
-        BB_UNSET(gs->bitboards[!gs->side_to_move], move.dest);
+        rev_moves = 0;
+        BB_UNSET(pos_bbs[c.captp], c.to_sq);
+        BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], c.to_sq);
         break;
     }
 
     // increase full move counter if black
-    gs->full_move_counter += gs->side_to_move;
+    full_moves += stm;
 
     // now it's the other side's turn
-    gs->side_to_move = (COLOR)!gs->side_to_move;
+    stm = static_cast<COLOR>(!stm);
 }
 
-void unmake_move(game_state *gs, chess_move move)
-{
-    // TODO: reverse irreversible state somehow
-
-    // if we are unmaking a move black did, side to move becomes black
-    gs->side_to_move = (COLOR)!gs->side_to_move;
-
-    // move the moved piece back
-    BB_SET(gs->bitboards[move.movedp], move.origin);
-    BB_SET(gs->bitboards[gs->side_to_move], move.origin);
-
-    BB_UNSET(gs->bitboards[move.movedp], move.dest);
-    BB_UNSET(gs->bitboards[gs->side_to_move], move.dest);
-
-    // WARNING: This would need to be restored if it was reset
-    gs->reversible_move_counter -= 1;
-
-    // reset the captured piece if there was one
-    switch (move.captp)
-    {
-    case NONE_PIECE:
-        break;
-
-    case EN_PASSANTE:
-        BB_SET(gs->bitboards[PAWN], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
-        BB_SET(gs->bitboards[!gs->side_to_move], move.dest + PAWN_PUSH_DIR(!gs->side_to_move));
-        break;
-
-    default:
-        BB_SET(gs->bitboards[move.captp], move.dest);
-        BB_SET(gs->bitboards[!gs->side_to_move], move.dest);
-        break;
-    }
-
-    // increase full move counter if black
-    gs->full_move_counter -= gs->side_to_move;
-}
-
-/* Adapted from chessprogramming wiki */
+// Adapted from chessprogramming wiki
 // used for generating bishop and rook tables
-static bitboard dumb7fill(int origin_sq, bitboard blockers, DIR *dirs)
+static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
 {
     bitboard moves_bb = BB_ZERO;
-    bitboard dirmask = ~BB_ZERO;
+    bitboard dirmask  = ~BB_ZERO;
 
     // diri indicates the direction we are filling, and mask to apply (above two tables)
-    for (int diri = 0; diri < 4; diri++)
+    for (int dir_idx = 0; dir_idx < 4; dir_idx++)
     {
-        DIR current_dir = dirs[diri];
+        DIR current_dir = dirs[dir_idx];
 
         switch (current_dir)
         {
@@ -513,7 +426,6 @@ static bitboard dumb7fill(int origin_sq, bitboard blockers, DIR *dirs)
 
         case NORTH:
         case SOUTH:
-            dirmask = ~BB_ZERO;
             break;
         }
 
@@ -547,10 +459,10 @@ static bitboard dumb7fill(int origin_sq, bitboard blockers, DIR *dirs)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~41kb (8 bytes (bitboard) * 5184 entries)
-static bitboard BISHOP_MOVE_LOOKUP[5184] = {0};
+static std::array<bitboard, 5184> BISHOP_MOVE_LOOKUP = {0};
 
 // squares set might contain pieces that block bishop moves
-static const bitboard BISHOP_BLOCKER_MASK[64] = {
+static constexpr std::array<bitboard, 64> BISHOP_BLOCKER_MASK = {
     0x0040201008040200, 0x0000402010080400, 0x0000004020100a00, 0x0000000040221400, 0x0000000002442800,
     0x0000000204085000, 0x0000020408102000, 0x0002040810204000, 0x0020100804020000, 0x0040201008040000,
     0x00004020100a0000, 0x0000004022140000, 0x0000000244280000, 0x0000020408500000, 0x0002040810200000,
@@ -570,13 +482,13 @@ static const bitboard BISHOP_BLOCKER_MASK[64] = {
 // because there are 6 squares where blockers can be
 // so for a2 we start at index 63 (64th element)
 // max = 5184
-static const uint16_t BISHOP_MOVE_START_IDX[64] = {
+static constexpr std::array<uint16_t, 64> BISHOP_MOVE_START_IDX = {
     0,    63,   94,   125,  156,  187,  218,  249,  312,  343,  374,  405,  436,  467,  498,  529,
     560,  591,  622,  749,  876,  1003, 1130, 1161, 1192, 1223, 1254, 1381, 1892, 2403, 2530, 2561,
     2592, 2623, 2654, 2781, 3292, 3803, 3930, 3961, 3992, 4023, 4054, 4181, 4308, 4435, 4562, 4593,
     4624, 4655, 4686, 4717, 4748, 4779, 4810, 4841, 4872, 4935, 4966, 4997, 5028, 5059, 5090, 5121};
 
-bitboard bb_bishop_moves(int sq, bitboard blockers)
+bitboard bb_bishop_moves(square sq, const bitboard& blockers)
 {
     bitboard blocker_key = BB_PEXT(blockers, BISHOP_BLOCKER_MASK[sq]);
     return BISHOP_MOVE_LOOKUP[BISHOP_MOVE_START_IDX[sq] + blocker_key];
@@ -586,7 +498,7 @@ void init_bishop_tables(void)
 {
     DIR dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
     // iterate over each square
-    for (int curr_sq = 0; curr_sq < 64; curr_sq++)
+    for (square curr_sq = 0; curr_sq < 64; curr_sq++)
     {
         // blockers can appear in any bit set here
         bitboard potential_blocker_mask = BISHOP_BLOCKER_MASK[curr_sq];
@@ -614,10 +526,10 @@ void init_bishop_tables(void)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~800kb (8 bytes (bitboard) * 102337 entries)
-static bitboard ROOK_MOVE_LOOKUP[102337] = {0};
+static std::array<bitboard, 102337> ROOK_MOVE_LOOKUP = {0};
 
 // squares set might contain pieces that block rook moves
-static const bitboard ROOK_BLOCKER_MASK[64] = {
+static constexpr std::array<bitboard, 64> ROOK_BLOCKER_MASK = {
     0x000101010101017e, 0x000202020202027c, 0x000404040404047a, 0x0008080808080876, 0x001010101010106e,
     0x002020202020205e, 0x004040404040403e, 0x008080808080807e, 0x0001010101017e00, 0x0002020202027c00,
     0x0004040404047a00, 0x0008080808087600, 0x0010101010106e00, 0x0020202020205e00, 0x0040404040403e00,
@@ -637,13 +549,13 @@ static const bitboard ROOK_BLOCKER_MASK[64] = {
 // because there are 12 squares where blockers can be
 // so for a2 we start at index 4095 (4096th element)
 // max idx = 102336
-static const uint32_t ROOK_MOVE_START_IDX[64] = {
+static constexpr std::array<uint32_t, 64> ROOK_MOVE_START_IDX = {
     0,     4095,  6142,  8189,  10236, 12283, 14330, 16377, 20472, 22519, 23542, 24565, 25588, 26611, 27634, 28657,
     30704, 32751, 33774, 34797, 35820, 36843, 37866, 38889, 40936, 42983, 44006, 45029, 46052, 47075, 48098, 49121,
     51168, 53215, 54238, 55261, 56284, 57307, 58330, 59353, 61400, 63447, 64470, 65493, 66516, 67539, 68562, 69585,
     71632, 73679, 74702, 75725, 76748, 77771, 78794, 79817, 81864, 85959, 88006, 90053, 92100, 94147, 96194, 98241};
 
-bitboard bb_rook_moves(int sq, bitboard blockers)
+bitboard bb_rook_moves(square sq, const bitboard& blockers)
 {
     bitboard blocker_key = BB_PEXT(blockers, ROOK_BLOCKER_MASK[sq]);
 
@@ -654,7 +566,7 @@ void init_rook_tables(void)
 {
     DIR dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square
-    for (int curr_sq = 0; curr_sq < 64; curr_sq++)
+    for (square curr_sq = 0; curr_sq < 64; curr_sq++)
     {
         // blockers can appear in any bit set here
         bitboard potential_blocker_mask = ROOK_BLOCKER_MASK[curr_sq];
@@ -679,7 +591,7 @@ void init_rook_tables(void)
 
 // ------------------QUEENS----------------------
 
-bitboard bb_queen_moves(int sq, bitboard blockers)
+bitboard bb_queen_moves(int sq, const bitboard& blockers)
 {
     return bb_rook_moves(sq, blockers) | bb_bishop_moves(sq, blockers);
 }
@@ -702,10 +614,7 @@ static const bitboard king_lookup[64] = {
     0x2838000000000000ULL, 0x5070000000000000ULL, 0xa0e0000000000000ULL, 0x40c0000000000000ULL};
 
 // The thrill is gone
-bitboard bb_king_moves(int sq)
-{
-    return king_lookup[sq];
-}
+bitboard bb_king_moves(int sq) { return king_lookup[sq]; }
 
 //-------------------KNIGHTS---------------------
 static const bitboard knight_lookup[64] = {
@@ -723,47 +632,39 @@ static const bitboard knight_lookup[64] = {
     0x2000204000000000ULL, 0x0004020000000000ULL, 0x0008050000000000ULL, 0x00110A0000000000ULL, 0x0022140000000000ULL,
     0x0044280000000000ULL, 0x0088500000000000ULL, 0x0010A00000000000ULL, 0x0020400000000000ULL};
 
-bitboard bb_knight_moves(int sq)
-{
-    return knight_lookup[sq];
-}
+bitboard bb_knight_moves(int sq) { return knight_lookup[sq]; }
 
 // ------------------PAWNS-----------------------
 // 1. attacks
-bitboard bb_pawn_attacks_w(const game_state *gs, COLOR side_to_move)
+bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
-    bitboard attackables = gs->bitboards[!side_to_move];
+    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(moving) + WEST);
 
-    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(side_to_move) + WEST);
-
-    attackables |= gs->bitboards[EN_PASSANTE];
-
-    return GEN_SHIFT(pawns, attack_dir) & attackables & w_mask;
+    return GEN_SHIFT(pawns, attack_dir) & attackable & w_mask;
 }
 
-bitboard bb_pawn_attacks_e(const game_state *gs, COLOR side_to_move)
+bitboard bb_pawn_attacks_e(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    bitboard pawns = gs->bitboards[side_to_move] & gs->bitboards[PAWN];
-    bitboard attackables = gs->bitboards[!side_to_move];
+    print_bb(pawns);
+    print_bb(attackable);
+    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(moving) + EAST);
 
-    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(side_to_move) + EAST);
-
-    attackables |= gs->bitboards[EN_PASSANTE];
-
-    return GEN_SHIFT(pawns, attack_dir) & attackables & e_mask;
+    return GEN_SHIFT(pawns, attack_dir) & attackable & e_mask;
 }
 
 // 2. Moves
-inline bitboard bb_pawn_single_moves(bitboard pawns, bitboard blockers, COLOR side_to_move)
+bitboard bb_pawn_single_moves(const bitboard& pawns, const bitboard& blockers, COLOR side_to_move)
 {
-    return GEN_SHIFT(pawns, PAWN_PUSH_DIR(side_to_move)) & ~blockers;
+    DIR move_dir = PAWN_PUSH_DIR(side_to_move);
+
+    return GEN_SHIFT(pawns, move_dir) & ~blockers;
 }
 
-inline bitboard bb_pawn_double_moves(bitboard single_moves, bitboard blockers, COLOR side_to_move)
+bitboard bb_pawn_double_moves(const bitboard& single_moves, const bitboard& blockers, COLOR side_to_move)
 {
-    DIR move_direction = PAWN_PUSH_DIR(side_to_move);
+    DIR move_dir = PAWN_PUSH_DIR(side_to_move);
+
     bitboard double_move_rank = side_to_move == BLACK ? BB_RANK_5 : BB_RANK_4;
 
-    return GEN_SHIFT(single_moves, move_direction) & ~blockers & double_move_rank;
+    return GEN_SHIFT(single_moves, move_dir) & ~blockers & double_move_rank;
 }
