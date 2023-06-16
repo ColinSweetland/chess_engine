@@ -20,7 +20,10 @@ all: $(OUTPUT) run
 
 # Run the program
 run:
-	./$(OUTPUT)
+	echo "============= running program =============" && echo 
+	./$(OUTPUT) && \
+	echo "============= Exit code: $$? ==============="
+	
 
 # link objects and output runnable program in output/
 $(OUTPUT): $(OBJECTS)
@@ -37,6 +40,8 @@ clean:
 	rm -rf $(OBJ_DIR) $(OUT_DIR)
 
 .PHONY: clean all run
+
+.SILENT: run
 
 
 
