@@ -645,8 +645,6 @@ bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, CO
 
 bitboard bb_pawn_attacks_e(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    print_bb(pawns);
-    print_bb(attackable);
     DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(moving) + EAST);
 
     return GEN_SHIFT(pawns, attack_dir) & attackable & e_mask;
