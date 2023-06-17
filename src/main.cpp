@@ -56,7 +56,7 @@ int main(void)
 
     int mvc;
 
-    std::array<ChessMove, MAX_GENERATABLE_MOVES> ml = pos.pseudo_legal_moves(mvc);
+    auto ml = pos.pseudo_legal_moves(mvc);
 
     std::cout << pos;
 

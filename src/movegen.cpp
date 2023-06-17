@@ -289,8 +289,6 @@ std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& m
         if (spaces_free & !attacked)
         {
             pl_moves[move_count++] = {kng_sq, kng_sq + (WEST * 2), ChessMove::flags::QUEENSIDE_CASTLE};
-
-            move_count++;
         }
     }
 
