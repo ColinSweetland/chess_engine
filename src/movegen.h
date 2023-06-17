@@ -6,9 +6,7 @@
 
 //--------------MOVES-------------------
 
-std::ostream& operator<<(std::ostream& out, const chess_move& move);
-// parse move in long algebraic notation
-chess_move parse_move(char* movestring);
+std::ostream& operator<<(std::ostream& out, const ChessMove& move);
 
 // ----- BISHOP MOVES-----
 void init_bishop_tables(void);

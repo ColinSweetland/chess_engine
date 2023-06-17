@@ -29,6 +29,7 @@ inline bool BB_IS_SET_AT(const bitboard& bb, square sq) { return bb & BB_SQ(sq);
 constexpr square rankfile_to_sq(int rank, int file) { return (rank - 1) * 8 + file - 1; }
 
 // index like 56 to 1-8 file or rank num
+constexpr int PAWN_PROMO_RANK(COLOR c) { return c ? 1 : 8; }
 constexpr int RANK_FROM_SQ(square sq) { return (sq / 8) + 1; }
 constexpr int FILE_FROM_SQ(square sq) { return (sq % 8) + 1; }
 

@@ -51,28 +51,17 @@ int main(void)
 {
     init();
 
-    // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1"};
-    Position pos{"r3k2r/p6p/8/8/P7/bq6/P1P4P/B3K2R b KQkq - 0 1"};
+    Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1"};
+    // Position pos{"r3k2r/p6p/8/8/P7/bq6/P1P4P/B3K2R b KQkq - 0 1"};
 
-    int mvcnt;
+    int mvc;
 
-    auto ml = pos.pseudo_legal_moves(mvcnt);
-    int  i  = 0;
-
-    for (auto m : ml)
-    {
-        i++;
-        std::cout << i << " " << m;
-
-        if (i >= mvcnt)
-            break;
-    }
+    std::array<ChessMove, MAX_GENERATABLE_MOVES> ml = pos.pseudo_legal_moves(mvc);
 
     std::cout << pos;
-    // pos.dbg_print();
-    std::cout << pos.FEN();
 
-    print_bb(bb_queen_moves(17, pos.pieces()) & ~pos.pieces(pos.side_to_move()));
+    for (int i = 0; i < mvc; i++)
+        std::cout << i << ' ' << ml[i];
 
     return 0;
 }

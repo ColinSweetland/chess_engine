@@ -125,7 +125,7 @@ PIECE Position::piece_at_sq(int sq) const
 {
     for (int p = PAWN; p <= KING; p++)
     {
-        if (BB_IS_SET_AT(pos_bbs[p], sq))
+        if (BB_IS_SET_AT(pieces(p), sq))
         {
             return static_cast<PIECE>(p);
         }
@@ -187,6 +187,57 @@ bool Position::sq_attacked(int sq, COLOR attacking_color) const
     bsh_attkrs &= pieces(BISHOP) | pieces(QUEEN);
 
     return bsh_attkrs;
+}
+
+void Position::make_move(ChessMove c)
+{
+    // TODO: Handle castle moves
+    // I think the best way to do this is with a flag
+    square orig_sq = c.get_origin_sq();
+    square dest_sq = c.get_dest_sq();
+
+    PIECE moved_piece = piece_at_sq(orig_sq);
+    int   flags       = c.get_flags();
+
+    // increment rev move counter (it will get reset if it needs to)
+    // also increase full moves (only if black)
+    rev_moves += 1;
+    full_moves += stm;
+
+    // en passante is always cleared after a move, or set if it was double push
+    if (c.is_double_push())
+        pos_bbs[EN_PASSANTE] = BB_SQ(orig_sq + PAWN_PUSH_DIR(stm));
+    else
+        pos_bbs[EN_PASSANTE] = BB_ZERO;
+
+    // moving pawns is not reversible
+    if (moved_piece == PAWN)
+        rev_moves = 0;
+
+    // move the moved piece
+    BB_UNSET(pos_bbs[moved_piece], orig_sq);
+    BB_SET(pos_bbs[moved_piece], dest_sq);
+
+    BB_UNSET(pos_bbs[stm], orig_sq);
+    BB_SET(pos_bbs[stm], dest_sq);
+
+    if (c.is_capture())
+    {
+        if (flags == ChessMove::flags::EP_CAP)
+        {
+            rev_moves = 0;
+            BB_UNSET(pos_bbs[PAWN], dest_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
+            BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], dest_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
+        }
+        else
+        {
+            rev_moves = 0;
+            BB_UNSET(pos_bbs[piece_at_sq(dest_sq)], dest_sq);
+            BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], dest_sq);
+        }
+    }
+    // now it's the other side's turn
+    stm = static_cast<COLOR>(!stm);
 }
 
 // Forsyth Edwards Notation is a common string based representation of a chess position
@@ -320,75 +371,65 @@ Position::Position(const char* fenstr) : pos_bbs{0}, castle_r{0}
 
 str Position::FEN() const
 {
-    // theoretical max length FEN is like 87 (according to stack overflow) + rounding to extra safe
-    str fen_buf{87, ' '};
+    str fen_buf{15, ' '};
 
     std::ostringstream fen{fen_buf};
 
     int piece_color = 0;
 
-    bool is_empty_space    = 0;
-    int  empty_space_count = 0;
+    PIECE sq_piece;
+    int   empty_space_count = 0;
 
     // ---- BOARD SECTION ----
 
     // through each bit board index - upper left to lower right
-    for (int bb_index = 56; bb_index >= 0; bb_index++)
+    for (int sq = 56; sq >= 0; sq++)
     {
-        is_empty_space = 1;
+        sq_piece = piece_at_sq(sq);
 
-        // go through all piece bitboards looking for set bit at bb index
-        for (int piece = PAWN; piece <= KING; piece++)
-        {
-            // if there is a piece at the index
-            if (BB_IS_SET_AT(pos_bbs[piece], bb_index))
-            {
-
-                is_empty_space = 0;
-
-                if (empty_space_count > 0)
-                {
-                    // write the number of empty spaces if we have some
-                    fen.put(empty_space_count + '0');
-
-                    empty_space_count = 0;
-                }
-
-                // if the bit iis set in black, the piece is black, otherwise white
-                piece_color = BB_IS_SET_AT(pos_bbs[BLACK], bb_index);
-
-                // write the appropriate piece to the FEN string
-                fen.put(piece_color ? piece_to_char.at(piece) : toupper(piece_to_char.at(piece)));
-            }
-        }
-
-        if (is_empty_space)
+        if (sq_piece == NO_PIECE)
         {
             empty_space_count++;
         }
+        else
+        {
+            // if empty space came before this piece, write the number
+            if (empty_space_count)
+            {
+                fen.put(empty_space_count + '0');
+                empty_space_count = 0;
+            }
+            char piece_char = piece_to_char.at(sq_piece);
 
-        // last column
-        if (FILE_FROM_SQ(bb_index) == 8)
+            // if piece is white, make uppercase
+            if (BB_IS_SET_AT(pieces(WHITE), sq))
+            {
+                piece_char = toupper(piece_char);
+            }
+
+            fen.put(piece_char);
+        }
+
+        // last file
+        if (FILE_FROM_SQ(sq) == 8)
         {
             // if we have empty space at the end of the line..
             // we must write it, since it can't carry to the next line.
-            if (empty_space_count > 0)
+            if (empty_space_count)
             {
-
-                // write the last empty space for the line
                 fen.put(empty_space_count + '0');
 
                 empty_space_count = 0;
             }
 
             // add / which means end of row, except on the last rank (rank 1)
-            if (bb_index != 7)
+            if (sq != 7)
             {
                 fen << '/';
             }
 
             // shift bb index to next row, first entry
-            bb_index -= 16;
+            sq -= 16;
         }
     }
 

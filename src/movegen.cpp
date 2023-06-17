@@ -15,62 +15,24 @@ static constexpr bitboard w_mask = ~BB_FILE_H;
 
 // ---------------- MOVES ---------------------------
 
-std::ostream& operator<<(std::ostream& out, const chess_move& move)
+std::ostream& operator<<(std::ostream& out, const ChessMove& m)
 {
+    square orig = m.get_origin_sq();
+    square dest = m.get_dest_sq();
 
-    // promo or castle move
-    if (move.promo != NO_PIECE)
-    {
-        void print_move(const chess_move&);
+    out << FILE_CHAR_FROM_SQ(orig) << RANK_CHAR_FROM_SQ(orig);
 
-        switch (move.movedp)
-        {
-
-        case PAWN: // pawn promotion
-            out << "Pawn on " << FILE_CHAR_FROM_SQ(move.from_sq) << RANK_CHAR_FROM_SQ(move.from_sq);
-            out << " moves to " << FILE_CHAR_FROM_SQ(move.to_sq) << RANK_CHAR_FROM_SQ(move.to_sq);
-            out << " and promotes to " << piece_to_str.at(move.promo) << '\n';
-            break;
-
-        case KING:
-            out << "King castles " << piece_to_str.at(move.promo) << "side\n";
-            break;
-
-        default:
-            std::cerr << "Unexpected moving piece " << piece_to_str.at(move.movedp) << " when move promo field set to "
-                      << piece_to_str.at(move.promo) << '\n';
-            std::cerr << "File: " << __FILE__ << " line: " << __LINE__ << '\n';
-            exit(1);
-            break;
-        }
-
-        return out;
-    }
-
-    out << piece_to_str.at(move.movedp) << " on " << FILE_CHAR_FROM_SQ(move.from_sq) << RANK_CHAR_FROM_SQ(move.from_sq);
-
-    if (move.captp == NO_PIECE)
-    {
-        out << " moves to ";
-    }
-    else
-    {
-        out << " Captures " << piece_to_str.at(move.captp) << " on ";
-    }
-
-    out << FILE_CHAR_FROM_SQ(move.to_sq) << RANK_CHAR_FROM_SQ(move.to_sq) << '\n';
+    out << FILE_CHAR_FROM_SQ(dest) << RANK_CHAR_FROM_SQ(dest) << '\n';
 
     return out;
 }
 
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
-std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& move_count) const
+std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& move_count) const
 {
-    std::array<chess_move, MAX_GENERATABLE_MOVES> pl_moves;
+    std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves;
 
     move_count = 0;
-
-    chess_move m;
 
     const bitboard occ   = pieces();
     const bitboard pawns = pieces(stm, PAWN);
@@ -85,7 +47,8 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
     bitboard p_att_e  = bb_pawn_attacks_e(pawns, enemy_pieces, stm);
     bitboard p_att_w  = bb_pawn_attacks_w(pawns, enemy_pieces, stm);
 
-    DIR pawn_push_dir = PAWN_PUSH_DIR(stm);
+    DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
+    int pawn_promo_rank = PAWN_PROMO_RANK(stm);
 
     // --- PAWNS ---
 
@@ -93,72 +56,84 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
     while (p_single != BB_ZERO)
     {
         // square of a move
-        int sq = BB_LSB(p_single);
+        square dest_sq = BB_LSB(p_single);
         BB_UNSET_LSB(p_single);
 
-        pl_moves[move_count].movedp  = PAWN;
-        pl_moves[move_count].captp   = NO_PIECE;
-        pl_moves[move_count].to_sq   = sq;
-        pl_moves[move_count].from_sq = sq - pawn_push_dir;
-        pl_moves[move_count].promo   = NO_PIECE;
+        square orig_sq = dest_sq - pawn_push_dir;
 
-        move_count++;
+        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::KNIGHT_PROMO};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::BISHOP_PROMO};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::ROOK_PROMO};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::QUEEN_PROMO};
+        }
+        else
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::NO_FLAGS};
+        }
     }
 
     // double pawn pushes
     while (p_double != BB_ZERO)
     {
         // square of a move
-        int sq = BB_LSB(p_double);
+        int dest_sq = BB_LSB(p_double);
         BB_UNSET_LSB(p_double);
 
-        pl_moves[move_count].movedp  = PAWN;
-        pl_moves[move_count].captp   = NO_PIECE;
-        pl_moves[move_count].to_sq   = sq;
-        pl_moves[move_count].from_sq = sq - pawn_push_dir * 2;
-        pl_moves[move_count].promo   = NO_PIECE;
+        int orig_sq = dest_sq - (pawn_push_dir * 2);
 
-        move_count++;
+        pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::DOUBLE_PUSH};
     }
 
+    // pawn attacks east
     while (p_att_e != BB_ZERO)
     {
         // square of a move
-        int sq = BB_LSB(p_att_e);
+        int dest_sq = BB_LSB(p_att_e);
         BB_UNSET_LSB(p_att_e);
 
-        pl_moves[move_count].movedp = PAWN;
-        pl_moves[move_count].captp  = piece_at_sq(sq);
+        int orig_sq = dest_sq - (pawn_push_dir + EAST);
 
-        // we need this if for pawns.. unfortunately
-        if (pl_moves[move_count].captp == NO_PIECE)
-            pl_moves[move_count].captp = EN_PASSANTE;
+        PIECE captured = piece_at_sq(dest_sq);
 
-        pl_moves[move_count].to_sq   = sq;
-        pl_moves[move_count].from_sq = sq - (pawn_push_dir + EAST);
-        pl_moves[move_count].promo   = NO_PIECE;
+        captured = captured == NO_PIECE ? EN_PASSANTE : captured;
 
-        move_count++;
+        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)};
+        }
+        else
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+        }
     }
 
+    // pawn attacks west
     while (p_att_w != BB_ZERO)
     {
         // square of a move
-        int sq = BB_LSB(p_att_w);
+        int dest_sq = BB_LSB(p_att_w);
         BB_UNSET_LSB(p_att_w);
 
-        pl_moves[move_count].movedp = PAWN;
-        pl_moves[move_count].captp  = piece_at_sq(sq);
+        int orig_sq = dest_sq - (pawn_push_dir + WEST);
 
-        // we need this if just for pawns.. unfortunately
-        if (pl_moves[move_count].captp == NO_PIECE)
-            pl_moves[move_count].captp = EN_PASSANTE;
+        PIECE captured = piece_at_sq(dest_sq);
 
-        pl_moves[move_count].to_sq   = sq;
-        pl_moves[move_count].from_sq = sq - (pawn_push_dir + WEST);
-        pl_moves[move_count].promo   = NO_PIECE;
-
-        move_count++;
+        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)};
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)};
+        }
+        else
+        {
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+        }
     }
 
     // --- KNIGHTS ---
@@ -168,23 +143,19 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
     while (kn != BB_ZERO)
     {
-        int kn_sq = BB_LSB(kn);
+        int orig_sq = BB_LSB(kn);
         BB_UNSET_LSB(kn);
 
-        kn_moves = bb_knight_moves(kn_sq) & moveable_squares;
+        kn_moves = bb_knight_moves(orig_sq) & moveable_squares;
 
         while (kn_moves != BB_ZERO)
         {
-            int sq = BB_LSB(kn_moves);
+            int dest_sq = BB_LSB(kn_moves);
             BB_UNSET_LSB(kn_moves);
 
-            pl_moves[move_count].movedp  = KNIGHT;
-            pl_moves[move_count].captp   = piece_at_sq(sq);
-            pl_moves[move_count].to_sq   = sq;
-            pl_moves[move_count].from_sq = kn_sq;
-            pl_moves[move_count].promo   = NO_PIECE;
+            PIECE captured = piece_at_sq(dest_sq);
 
-            move_count++;
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
         }
     }
 
@@ -195,23 +166,19 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
     while (bsh != BB_ZERO)
     {
-        int bsh_sq = BB_LSB(bsh);
+        int orig_sq = BB_LSB(bsh);
         BB_UNSET_LSB(bsh);
 
-        bsh_moves = bb_bishop_moves(bsh_sq, occ) & moveable_squares;
+        bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares;
 
         while (bsh_moves != BB_ZERO)
         {
-            int sq = BB_LSB(bsh_moves);
+            int dest_sq = BB_LSB(bsh_moves);
             BB_UNSET_LSB(bsh_moves);
 
-            pl_moves[move_count].movedp  = BISHOP;
-            pl_moves[move_count].captp   = piece_at_sq(sq);
-            pl_moves[move_count].to_sq   = sq;
-            pl_moves[move_count].from_sq = bsh_sq;
-            pl_moves[move_count].promo   = NO_PIECE;
+            PIECE captured = piece_at_sq(dest_sq);
 
-            move_count++;
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
         }
     }
 
@@ -222,23 +189,19 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
     while (rk != BB_ZERO)
     {
-        int rk_sq = BB_LSB(rk);
+        int orig_sq = BB_LSB(rk);
         BB_UNSET_LSB(rk);
 
-        rk_moves = bb_rook_moves(rk_sq, occ) & moveable_squares;
+        rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares;
 
         while (rk_moves != BB_ZERO)
         {
-            int sq = BB_LSB(rk_moves);
+            int dest_sq = BB_LSB(rk_moves);
             BB_UNSET_LSB(rk_moves);
 
-            pl_moves[move_count].movedp  = ROOK;
-            pl_moves[move_count].captp   = piece_at_sq(sq);
-            pl_moves[move_count].to_sq   = sq;
-            pl_moves[move_count].from_sq = rk_sq;
-            pl_moves[move_count].promo   = NO_PIECE;
+            PIECE captured = piece_at_sq(dest_sq);
 
-            move_count++;
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
         }
     }
 
@@ -250,23 +213,19 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
     while (qn != BB_ZERO)
     {
-        int qn_sq = BB_LSB(qn);
+        int orig_sq = BB_LSB(qn);
         BB_UNSET_LSB(qn);
 
-        qn_moves = bb_queen_moves(qn_sq, occ) & moveable_squares;
+        qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares;
 
         while (qn_moves != BB_ZERO)
         {
-            int sq = BB_LSB(qn_moves);
+            int dest_sq = BB_LSB(qn_moves);
             BB_UNSET_LSB(qn_moves);
 
-            pl_moves[move_count].movedp  = QUEEN;
-            pl_moves[move_count].captp   = piece_at_sq(sq);
-            pl_moves[move_count].to_sq   = sq;
-            pl_moves[move_count].from_sq = qn_sq;
-            pl_moves[move_count].promo   = NO_PIECE;
+            PIECE captured = piece_at_sq(dest_sq);
 
-            move_count++;
+            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
         }
     }
 
@@ -274,20 +233,19 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
     bitboard kng = pieces(stm, KING);
 
-    int kng_sq = BB_LSB(kng);
+    // there can only be one king
+    square kng_sq = BB_LSB(kng);
 
     bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
 
     while (kng_moves != BB_ZERO)
     {
-        int sq = BB_LSB(kng_moves);
+        int dest_sq = BB_LSB(kng_moves);
         BB_UNSET_LSB(kng_moves);
 
-        pl_moves[move_count].movedp  = KING;
-        pl_moves[move_count].captp   = piece_at_sq(sq);
-        pl_moves[move_count].to_sq   = sq;
-        pl_moves[move_count].from_sq = kng_sq;
-        pl_moves[move_count].promo   = NO_PIECE;
+        PIECE captured = piece_at_sq(dest_sq);
+
+        pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
 
         move_count++;
     }
@@ -314,15 +272,7 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
         {
-            pl_moves[move_count].movedp  = KING;
-            pl_moves[move_count].captp   = NO_PIECE;
-            pl_moves[move_count].to_sq   = kng_sq + (EAST * 2);
-            pl_moves[move_count].from_sq = kng_sq;
-
-            // how to indicate kingside castle
-            pl_moves[move_count].promo = KING;
-
-            move_count++;
+            pl_moves[move_count++] = {kng_sq, kng_sq + (EAST * 2), ChessMove::flags::KINGSIDE_CASTLE};
         }
     }
 
@@ -338,64 +288,13 @@ std::array<chess_move, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& 
 
         if (spaces_free & !attacked)
         {
-            pl_moves[move_count].movedp  = KING;
-            pl_moves[move_count].captp   = NO_PIECE;
-            pl_moves[move_count].to_sq   = kng_sq + (WEST * 2);
-            pl_moves[move_count].from_sq = kng_sq;
-
-            pl_moves[move_count].promo = QUEEN;
+            pl_moves[move_count++] = {kng_sq, kng_sq + (WEST * 2), ChessMove::flags::QUEENSIDE_CASTLE};
 
             move_count++;
         }
     }
 
     return pl_moves;
-}
-
-void Position::make_move(chess_move c)
-{
-    // TODO: if we double push a pawn- update enpassante
-    //  I think the best way to do this is with a flag
-
-    // move the moved piece
-    BB_UNSET(pos_bbs[c.movedp], c.from_sq);
-    BB_UNSET(pos_bbs[stm], c.from_sq);
-
-    BB_SET(pos_bbs[c.movedp], c.to_sq);
-    BB_SET(pos_bbs[stm], c.to_sq);
-
-    // increment rev move counter (it will get reset if it needs to)
-    rev_moves += 1;
-
-    // moving pawns is not reversible
-    if (c.movedp == PAWN)
-        rev_moves = 0;
-
-    // en passante is always cleared after a move
-    pos_bbs[EN_PASSANTE] &= BB_ZERO;
-
-    // unset the captured piece if there is one & reset rev move counter
-    switch (c.captp)
-    {
-    case NO_PIECE:
-        break;
-    case EN_PASSANTE:
-        rev_moves = 0;
-        BB_UNSET(pos_bbs[PAWN], c.to_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
-        BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], c.to_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
-        break;
-    default:
-        rev_moves = 0;
-        BB_UNSET(pos_bbs[c.captp], c.to_sq);
-        BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], c.to_sq);
-        break;
-    }
-
-    // increase full move counter if black
-    full_moves += stm;
-
-    // now it's the other side's turn
-    stm = static_cast<COLOR>(!stm);
 }
 
 // Adapted from chessprogramming wiki

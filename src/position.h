@@ -36,14 +36,13 @@ class Position
     bool sq_attacked(int sq, COLOR attacking_color) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
-    std::array<chess_move, MAX_GENERATABLE_MOVES> pseudo_legal_moves(int& move_count) const;
+    std::array<ChessMove, MAX_GENERATABLE_MOVES> pseudo_legal_moves(int& move_count) const;
 
-    void make_move(chess_move c);
+    void make_move(ChessMove c);
     void unmake_last();
 
     inline bitboard        pieces() const { return pos_bbs[WHITE] | pos_bbs[BLACK]; }
-    inline const bitboard& pieces(COLOR c) const { return pos_bbs[c]; }
-    inline const bitboard& pieces(PIECE p) const { return pos_bbs[p]; }
+    inline const bitboard& pieces(int color_or_piece) const { return pos_bbs[color_or_piece]; }
     inline bitboard        pieces(COLOR c, PIECE p) const { return pos_bbs[c] & pos_bbs[p]; }
 
     str FEN() const;
@@ -54,9 +53,5 @@ class Position
 
     friend std::ostream& operator<<(std::ostream& out, const Position& p);
 };
-
-/*
-bool sq_attacked(const game_state* gs, int sq, COLOR attacking_color);
-*/
 
 #endif // GAMESTATE_INCL
