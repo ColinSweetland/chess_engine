@@ -21,7 +21,7 @@ all: $(OUTPUT) run
 # Run the program
 run:
 	echo "============= running program =============" && echo 
-	./$(OUTPUT) && \
+	./$(OUTPUT) || \
 	echo "============= Exit code: $$? ==============="
 	
 
