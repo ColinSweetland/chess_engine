@@ -246,8 +246,6 @@ std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& m
         PIECE captured = piece_at_sq(dest_sq);
 
         pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
-
-        move_count++;
     }
 
     // --- CASTLING ---
