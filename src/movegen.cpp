@@ -353,8 +353,8 @@ static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
 
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
-// size: ~41kb (8 bytes (bitboard) * 5184 entries)
-static std::array<bitboard, 5184> BISHOP_MOVE_LOOKUP = {0};
+// size: ~41kb (8 bytes (bitboard) * 5185 entries)
+static std::array<bitboard, 5185> BISHOP_MOVE_LOOKUP = {0};
 
 // squares set might contain pieces that block bishop moves
 static constexpr std::array<bitboard, 64> BISHOP_BLOCKER_MASK = {
