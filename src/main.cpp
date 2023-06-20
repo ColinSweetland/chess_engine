@@ -51,8 +51,9 @@ int main(void)
 {
     init();
 
-    Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1"};
-    // Position pos{"r3k2r/p6p/8/8/P7/bq6/P1P4P/B3K2R b KQkq - 0 1"};
+    // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
+    //  Position pos{};
+    Position pos{"r3k2r/p6p/8/8/2Pp4/8/P6P/R3K2R b KQkq c3 0 1"};
 
     int mvc;
 
@@ -62,6 +63,14 @@ int main(void)
 
     for (int i = 0; i < mvc; i++)
         std::cout << i << ' ' << ml[i];
+
+    pos.make_move(ml[17]);
+
+    pos.print_bitboard(EN_PASSANTE);
+
+    std::cout << pos;
+
+    std::cout << pos.FEN();
 
     return 0;
 }

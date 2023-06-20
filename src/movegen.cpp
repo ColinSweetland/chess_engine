@@ -123,6 +123,8 @@ std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& m
 
         PIECE captured = piece_at_sq(dest_sq);
 
+        captured = captured == NO_PIECE ? EN_PASSANTE : captured;
+
         if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
         {
             pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)};

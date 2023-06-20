@@ -189,53 +189,88 @@ bool Position::sq_attacked(int sq, COLOR attacking_color) const
     return bsh_attkrs;
 }
 
-void Position::make_move(ChessMove c)
+void Position::make_move(const ChessMove c)
 {
-    // TODO: Handle castle moves
-    // I think the best way to do this is with a flag
     square orig_sq = c.get_origin_sq();
     square dest_sq = c.get_dest_sq();
 
-    PIECE moved_piece = piece_at_sq(orig_sq);
-    int   flags       = c.get_flags();
+    PIECE moved_piece      = piece_at_sq(orig_sq);
+    PIECE after_move_piece = c.is_promo() ? c.get_promo_piece() : moved_piece;
 
-    // increment rev move counter (it will get reset if it needs to)
-    // also increase full moves (only if black)
+    int pushdir = PAWN_PUSH_DIR(stm);
+
+    // increment rev move counter (will be reset later if it needs to)
     rev_moves += 1;
+    // increase full moves (only if black)
     full_moves += stm;
 
     // en passante is always cleared after a move, or set if it was double push
     if (c.is_double_push())
-        pos_bbs[EN_PASSANTE] = BB_SQ(orig_sq + PAWN_PUSH_DIR(stm));
+        pos_bbs[EN_PASSANTE] = BB_SQ(orig_sq + pushdir);
     else
         pos_bbs[EN_PASSANTE] = BB_ZERO;
 
     // moving pawns is not reversible
     if (moved_piece == PAWN)
         rev_moves = 0;
+    // moving king always unsets castle rights for moving side
+    else if (moved_piece == KING)
+        castle_r &= (stm ? WCR : BCR);
 
-    // move the moved piece
+    // special moves section
+    if (c.is_capture())
+    {
+        square cap_square = dest_sq;
+
+        // for en_passante, the capture square is
+        // different than the square the pawn ends up
+        if (c.is_en_passante())
+            cap_square -= pushdir;
+
+        PIECE cap_piece = piece_at_sq(cap_square);
+
+        // remove the captured piece
+        BB_UNSET(pos_bbs[cap_piece], cap_square);
+        BB_UNSET(pos_bbs[!stm], cap_square);
+
+        // captures are not reversible
+        rev_moves = 0;
+    }
+    else if (c.get_flags() == ChessMove::KINGSIDE_CASTLE)
+    {
+        square rook_sq   = stm ? 63 : 7;
+        square rook_dest = dest_sq + WEST;
+
+        // we only have to move the rook, since we will move the king
+        BB_UNSET(pos_bbs[ROOK], rook_sq);
+        BB_UNSET(pos_bbs[stm], rook_sq);
+
+        BB_SET(pos_bbs[ROOK], rook_dest);
+        BB_SET(pos_bbs[stm], rook_dest);
+    }
+    else if (c.get_flags() == ChessMove::QUEENSIDE_CASTLE)
+    {
+        square rook_sq   = stm ? 56 : 0;
+        square rook_dest = dest_sq + EAST;
+
+        // we only have to move the rook, since we will move the king
+        BB_UNSET(pos_bbs[ROOK], rook_sq);
+        BB_UNSET(pos_bbs[stm], rook_sq);
+
+        BB_SET(pos_bbs[ROOK], rook_dest);
+        BB_SET(pos_bbs[stm], rook_dest);
+    }
+
+    // finally move the moved piece
     BB_UNSET(pos_bbs[moved_piece], orig_sq);
-    BB_SET(pos_bbs[moved_piece], dest_sq);
+    BB_SET(pos_bbs[after_move_piece], dest_sq);
 
     BB_UNSET(pos_bbs[stm], orig_sq);
     BB_SET(pos_bbs[stm], dest_sq);
 
-    if (c.is_capture())
-    {
-        if (flags == ChessMove::flags::EP_CAP)
-        {
-            rev_moves = 0;
-            BB_UNSET(pos_bbs[PAWN], dest_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
-            BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], dest_sq + PAWN_PUSH_DIR(static_cast<COLOR>(!stm)));
-        }
-        else
-        {
-            rev_moves = 0;
-            BB_UNSET(pos_bbs[piece_at_sq(dest_sq)], dest_sq);
-            BB_UNSET(pos_bbs[static_cast<COLOR>(!stm)], dest_sq);
-        }
-    }
+    // TODO: remove castle rights if we moved the rooks or captured a rook
+    // TODO: store state needed for unmake
+
     // now it's the other side's turn
     stm = static_cast<COLOR>(!stm);
 }

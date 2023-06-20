@@ -13,7 +13,7 @@ class Position
     // two for each color, 6 for pieces, 1 for enpassante sq
     std::array<bitboard, 9> pos_bbs;
 
-    int castle_r;
+    unsigned int castle_r;
 
     unsigned int rev_moves;
     unsigned int full_moves;
@@ -29,7 +29,7 @@ class Position
     inline const unsigned int& full_move_count() const { return full_moves; }
     inline const unsigned int& rev_move_count() const { return rev_moves; }
 
-    inline const int& castle_rights() const { return castle_r; }
+    inline const unsigned int& castle_rights() const { return castle_r; }
 
     PIECE piece_at_sq(int sq) const;
 
@@ -38,7 +38,7 @@ class Position
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     std::array<ChessMove, MAX_GENERATABLE_MOVES> pseudo_legal_moves(int& move_count) const;
 
-    void make_move(ChessMove c);
+    void make_move(const ChessMove c);
     void unmake_last();
 
     inline bitboard        pieces() const { return pos_bbs[WHITE] | pos_bbs[BLACK]; }

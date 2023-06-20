@@ -20,9 +20,9 @@ all: $(OUTPUT) run
 
 # Run the program
 run:
-	echo "============= running program =============" && echo 
-	./$(OUTPUT) || \
-	echo "============= Exit code: $$? ==============="
+	echo "============= running program ============="; echo 
+	./$(OUTPUT); \
+	echo "============= Exit code: $$? ================"
 	
 
 # link objects and output runnable program in output/

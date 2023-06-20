@@ -3,6 +3,7 @@
 
 #include <cinttypes>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 
@@ -151,23 +152,27 @@ class ChessMove
         return f == flags::KINGSIDE_CASTLE || f == QUEENSIDE_CASTLE;
     }
     bool is_double_push() const { return get_flags() == DOUBLE_PUSH; }
+    bool is_en_passante() const { return get_flags() == EP_CAP; }
 
     bool operator==(ChessMove a) const { return m_move == a.m_move; }
     bool operator!=(ChessMove a) const { return m_move != a.m_move; }
 
     // helper - returns flag with capture/promo
-    static ChessMove::flags makeflag(PIECE cap, PIECE pro)
+    static constexpr ChessMove::flags makeflag(PIECE cap, PIECE pro)
     {
         int f = 0;
         if (pro == NO_PIECE)
             switch (cap)
             {
             case NO_PIECE:
-                return NO_FLAGS;
+                f = NO_FLAGS;
+                break;
             case EN_PASSANTE:
-                return EP_CAP;
+                f = EP_CAP;
+                break;
             default:
-                return CAPTURE;
+                f = CAPTURE;
+                break;
             }
         else
         {
