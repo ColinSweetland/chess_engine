@@ -1,10 +1,10 @@
+#include <array>
 #include <iostream>
 
 #include "bitboard.h"
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
-// #include "movegen.h"
 
 #define MAX_UCI_INPUT_SIZE 1024
 
@@ -52,19 +52,21 @@ int main(void)
     init();
 
     // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
-    //  Position pos{};
-    Position pos{"r3k2r/p6p/8/8/2Pp4/8/P6P/R3K2R b KQkq c3 0 1"};
+    Position pos{};
+    // Position pos{"r3k2r/p6p/8/8/2Pp4/8/P6P/R3K2R b KQkq c3 0 1"};
 
-    int mvc;
+    // std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves;
 
-    auto ml = pos.pseudo_legal_moves(mvc);
+    std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves = {};
+
+    auto mvc = pos.pseudo_legal_moves(pl_moves);
 
     std::cout << pos;
 
     for (int i = 0; i < mvc; i++)
-        std::cout << i << ' ' << ml[i];
+        std::cout << i << ' ' << pl_moves[i];
 
-    pos.make_move(ml[17]);
+    pos.make_move(pl_moves[8]);
 
     pos.print_bitboard(EN_PASSANTE);
 

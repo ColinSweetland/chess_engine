@@ -36,7 +36,7 @@ class Position
     bool sq_attacked(int sq, COLOR attacking_color) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
-    std::array<ChessMove, MAX_GENERATABLE_MOVES> pseudo_legal_moves(int& move_count) const;
+    int pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& pl_moves) const;
 
     void make_move(const ChessMove c);
     void unmake_last();

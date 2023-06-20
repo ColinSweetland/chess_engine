@@ -28,11 +28,9 @@ std::ostream& operator<<(std::ostream& out, const ChessMove& m)
 }
 
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
-std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& move_count) const
+int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& pl_moves) const
 {
-    std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves;
-
-    move_count = 0;
+    int move_count = 0;
 
     const bitboard occ   = pieces();
     const bitboard pawns = pieces(stm, PAWN);
@@ -292,7 +290,7 @@ std::array<ChessMove, MAX_GENERATABLE_MOVES> Position::pseudo_legal_moves(int& m
         }
     }
 
-    return pl_moves;
+    return move_count;
 }
 
 // Adapted from chessprogramming wiki
