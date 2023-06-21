@@ -60,7 +60,7 @@ int main(void)
 
     Position pos{};
 
-    int depth = 6;
+    int depth = 2;
 
     perft_report(pos, depth);
 

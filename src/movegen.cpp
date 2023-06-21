@@ -20,7 +20,7 @@ std::ostream& operator<<(std::ostream& out, const ChessMove& m)
 
     out << FILE_CHAR_FROM_SQ(orig) << RANK_CHAR_FROM_SQ(orig);
 
-    out << FILE_CHAR_FROM_SQ(dest) << RANK_CHAR_FROM_SQ(dest) << '\n';
+    out << FILE_CHAR_FROM_SQ(dest) << RANK_CHAR_FROM_SQ(dest);
 
     return out;
 }

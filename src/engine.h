@@ -7,4 +7,6 @@ uint64_t perft(Position& p, int depth);
 
 void perft_report(Position& p, int depth);
 
+void perft_report_divided(Position& p, int depth);
+
 #endif // ENGINE_INCL
