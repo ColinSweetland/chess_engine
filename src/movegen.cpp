@@ -74,10 +74,10 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
     while (p_double != BB_ZERO)
     {
         // square of a move
-        int dest_sq = BB_LSB(p_double);
+        square dest_sq = BB_LSB(p_double);
         BB_UNSET_LSB(p_double);
 
-        int orig_sq = dest_sq - (pawn_push_dir * 2);
+        square orig_sq = dest_sq - (pawn_push_dir * 2);
 
         pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::DOUBLE_PUSH};
     }
@@ -86,10 +86,10 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
     while (p_att_e != BB_ZERO)
     {
         // square of a move
-        int dest_sq = BB_LSB(p_att_e);
+        square dest_sq = BB_LSB(p_att_e);
         BB_UNSET_LSB(p_att_e);
 
-        int orig_sq = dest_sq - (pawn_push_dir + EAST);
+        square orig_sq = dest_sq - (pawn_push_dir + EAST);
 
         PIECE captured = piece_at_sq(dest_sq);
 
@@ -112,10 +112,10 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
     while (p_att_w != BB_ZERO)
     {
         // square of a move
-        int dest_sq = BB_LSB(p_att_w);
+        square dest_sq = BB_LSB(p_att_w);
         BB_UNSET_LSB(p_att_w);
 
-        int orig_sq = dest_sq - (pawn_push_dir + WEST);
+        square orig_sq = dest_sq - (pawn_push_dir + WEST);
 
         PIECE captured = piece_at_sq(dest_sq);
 
@@ -141,14 +141,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
     while (kn != BB_ZERO)
     {
-        int orig_sq = BB_LSB(kn);
+        square orig_sq = BB_LSB(kn);
         BB_UNSET_LSB(kn);
 
         kn_moves = bb_knight_moves(orig_sq) & moveable_squares;
 
         while (kn_moves != BB_ZERO)
         {
-            int dest_sq = BB_LSB(kn_moves);
+            square dest_sq = BB_LSB(kn_moves);
             BB_UNSET_LSB(kn_moves);
 
             PIECE captured = piece_at_sq(dest_sq);
@@ -164,14 +164,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
     while (bsh != BB_ZERO)
     {
-        int orig_sq = BB_LSB(bsh);
+        square orig_sq = BB_LSB(bsh);
         BB_UNSET_LSB(bsh);
 
         bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares;
 
         while (bsh_moves != BB_ZERO)
         {
-            int dest_sq = BB_LSB(bsh_moves);
+            square dest_sq = BB_LSB(bsh_moves);
             BB_UNSET_LSB(bsh_moves);
 
             PIECE captured = piece_at_sq(dest_sq);
@@ -187,14 +187,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
     while (rk != BB_ZERO)
     {
-        int orig_sq = BB_LSB(rk);
+        square orig_sq = BB_LSB(rk);
         BB_UNSET_LSB(rk);
 
         rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares;
 
         while (rk_moves != BB_ZERO)
         {
-            int dest_sq = BB_LSB(rk_moves);
+            square dest_sq = BB_LSB(rk_moves);
             BB_UNSET_LSB(rk_moves);
 
             PIECE captured = piece_at_sq(dest_sq);
@@ -211,14 +211,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
     while (qn != BB_ZERO)
     {
-        int orig_sq = BB_LSB(qn);
+        square orig_sq = BB_LSB(qn);
         BB_UNSET_LSB(qn);
 
         qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares;
 
         while (qn_moves != BB_ZERO)
         {
-            int dest_sq = BB_LSB(qn_moves);
+            square dest_sq = BB_LSB(qn_moves);
             BB_UNSET_LSB(qn_moves);
 
             PIECE captured = piece_at_sq(dest_sq);
@@ -238,7 +238,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
     while (kng_moves != BB_ZERO)
     {
-        int dest_sq = BB_LSB(kng_moves);
+        square dest_sq = BB_LSB(kng_moves);
         BB_UNSET_LSB(kng_moves);
 
         PIECE captured = piece_at_sq(dest_sq);
@@ -268,7 +268,9 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
         {
-            pl_moves[move_count++] = {kng_sq, kng_sq + (EAST * 2), ChessMove::flags::KINGSIDE_CASTLE};
+            square dest_sq = kng_sq + (EAST * 2);
+
+            pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::flags::KINGSIDE_CASTLE};
         }
     }
 
@@ -284,7 +286,9 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         if (spaces_free & !attacked)
         {
-            pl_moves[move_count++] = {kng_sq, kng_sq + (WEST * 2), ChessMove::flags::QUEENSIDE_CASTLE};
+            square dest_sq = kng_sq + (WEST * 2);
+
+            pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::flags::QUEENSIDE_CASTLE};
         }
     }
 
@@ -484,7 +488,7 @@ void init_rook_tables(void)
 
 // ------------------QUEENS----------------------
 
-bitboard bb_queen_moves(int sq, const bitboard& blockers)
+bitboard bb_queen_moves(square sq, const bitboard& blockers)
 {
     return bb_rook_moves(sq, blockers) | bb_bishop_moves(sq, blockers);
 }
@@ -507,7 +511,7 @@ static const bitboard king_lookup[64] = {
     0x2838000000000000ULL, 0x5070000000000000ULL, 0xa0e0000000000000ULL, 0x40c0000000000000ULL};
 
 // The thrill is gone
-bitboard bb_king_moves(int sq) { return king_lookup[sq]; }
+bitboard bb_king_moves(square sq) { return king_lookup[sq]; }
 
 //-------------------KNIGHTS---------------------
 static const bitboard knight_lookup[64] = {
@@ -525,7 +529,7 @@ static const bitboard knight_lookup[64] = {
     0x2000204000000000ULL, 0x0004020000000000ULL, 0x0008050000000000ULL, 0x00110A0000000000ULL, 0x0022140000000000ULL,
     0x0044280000000000ULL, 0x0088500000000000ULL, 0x0010A00000000000ULL, 0x0020400000000000ULL};
 
-bitboard bb_knight_moves(int sq) { return knight_lookup[sq]; }
+bitboard bb_knight_moves(square sq) { return knight_lookup[sq]; }
 
 // ------------------PAWNS-----------------------
 // 1. attacks

@@ -1,7 +1,6 @@
 #ifndef TYPES_INCL
 #define TYPES_INCL
 
-#include <cinttypes>
 #include <string>
 #include <unordered_map>
 
@@ -13,7 +12,7 @@ using str = std::string;
 using bitboard = std::uint64_t;
 
 // 0-63 square on bitboard, from a1 to h8. -1 used for no square
-using square = int;
+using square = std::int8_t;
 
 enum COLOR
 {
@@ -127,17 +126,6 @@ class ChessMove
     inline PIECE get_promo_piece() const
     {
         return static_cast<PIECE>(is_promo() ? (get_flags() - (is_capture() ? 9 : 5)) : NO_PIECE);
-    }
-
-    void set_to(square to)
-    {
-        m_move &= ~0x3f;
-        m_move |= to & 0x3f;
-    }
-    void set_from(unsigned int from)
-    {
-        m_move &= ~0xfc0;
-        m_move |= (from & 0x3f) << 6;
     }
 
     bool is_promo() const { return get_flags() & 8; }

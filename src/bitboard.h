@@ -4,13 +4,18 @@
 #include "types.h"
 
 #include <immintrin.h>
+#include <cassert>
 // empty: all zeroes
 
 constexpr bitboard BB_ZERO = {0ULL};
 
 // bb at a certain square
 // maybe we could use a lookup table later
-constexpr bitboard BB_SQ(square sq) { return (1ULL << (sq)); }
+constexpr bitboard BB_SQ(square sq)
+{
+    assert(sq >= 0 && sq <= 63);
+    return (1ULL << (sq));
+}
 
 // x -> 1 at idx
 inline void BB_SET(bitboard& bb, square sq) { bb |= BB_SQ(sq); }

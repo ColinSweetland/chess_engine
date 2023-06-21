@@ -35,9 +35,10 @@ class Position
 
     inline const unsigned int& castle_rights() const { return castle_r; }
 
-    PIECE piece_at_sq(int sq) const;
+    PIECE piece_at_sq(square sq) const;
 
-    bool sq_attacked(int sq, COLOR attacking_color) const;
+    bool sq_attacked(square sq, COLOR attacking_color) const;
+    bool is_check(COLOR c) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     int pseudo_legal_moves(move_list& pl_moves) const;
@@ -51,7 +52,7 @@ class Position
 
     str FEN() const;
 
-    inline void print_bitboard(int bb) const { print_bb(pos_bbs[bb]); }
+    inline void print_bitboard(bitboard bb) const { print_bb(pos_bbs[bb]); }
 
     void dbg_print() const;
 

@@ -121,7 +121,7 @@ void Position::dbg_print() const
     std::cout << "REVERSIBLE MOVE COUNTER: " << rev_moves << "\n";
 }
 
-PIECE Position::piece_at_sq(int sq) const
+PIECE Position::piece_at_sq(square sq) const
 {
     for (int p = PAWN; p <= KING; p++)
     {
@@ -134,8 +134,9 @@ PIECE Position::piece_at_sq(int sq) const
     return NO_PIECE;
 }
 
-bool Position::sq_attacked(int sq, COLOR attacking_color) const
+bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
+    assert(sq >= 0 && sq < 64);
     // opposite of how att pawns move
     int      pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
     bitboard enemy_pawns  = pieces(attacking_color, PAWN);
@@ -187,6 +188,15 @@ bool Position::sq_attacked(int sq, COLOR attacking_color) const
     bsh_attkrs &= pieces(BISHOP) | pieces(QUEEN);
 
     return bsh_attkrs;
+}
+
+bool Position::is_check(COLOR c) const
+{
+    square kng_square = BB_LSB(pieces(c, KING));
+
+    assert(kng_square >= 0 && kng_square < 64);
+
+    return sq_attacked(kng_square, static_cast<COLOR>(!c));
 }
 
 void Position::make_move(const ChessMove c)

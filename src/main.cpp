@@ -1,8 +1,10 @@
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 
 #include "bitboard.h"
+#include "engine.h"
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
@@ -56,30 +58,11 @@ int main(void)
     // Position pos{};
     // Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R w KQkq c3 15 23"};
 
-    Position pos{"r3k3/1P5p/8/8/2PpB3/8/P6P/R3K2R b KQq c3 15 23"};
+    Position pos{};
 
-    str orig_fen = pos.FEN();
+    int depth = 6;
 
-    move_list pl_moves = {};
-
-    int mvc = pos.pseudo_legal_moves(pl_moves);
-
-    std::cout << pos;
-
-    for (int i = 0; i < mvc; i++)
-    {
-        pos.make_move(pl_moves[i]);
-
-        std::cout << "\nmade Move: " << pl_moves[i] << "\n" << pos;
-
-        assert(pos.FEN() != orig_fen);
-
-        pos.unmake_last();
-
-        std::cout << "\nunmade Move\n" << pos;
-
-        assert(orig_fen == pos.FEN());
-    }
+    perft_report(pos, depth);
 
     return 0;
 }
