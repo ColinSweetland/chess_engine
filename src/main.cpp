@@ -52,23 +52,19 @@ int main(void)
     init();
 
     // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
-    Position pos{};
-    // Position pos{"r3k2r/p6p/8/8/2Pp4/8/P6P/R3K2R b KQkq c3 0 1"};
+    // Position pos{};
+    Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R b KQkq c3 0 1"};
 
-    // std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves;
+    move_list pl_moves = {};
 
-    std::array<ChessMove, MAX_GENERATABLE_MOVES> pl_moves = {};
-
-    auto mvc = pos.pseudo_legal_moves(pl_moves);
+    int mvc = pos.pseudo_legal_moves(pl_moves);
 
     std::cout << pos;
 
     for (int i = 0; i < mvc; i++)
         std::cout << i << ' ' << pl_moves[i];
 
-    pos.make_move(pl_moves[8]);
-
-    pos.print_bitboard(EN_PASSANTE);
+    pos.make_move(pl_moves[4]);
 
     std::cout << pos;
 

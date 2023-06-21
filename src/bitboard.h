@@ -3,7 +3,6 @@
 
 #include "types.h"
 
-#include <cassert>
 #include <immintrin.h>
 // empty: all zeroes
 

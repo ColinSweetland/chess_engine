@@ -2,8 +2,6 @@
 #define TYPES_INCL
 
 #include <cinttypes>
-#include <cstdint>
-#include <cstdio>
 #include <string>
 #include <unordered_map>
 
@@ -13,8 +11,6 @@
 using str = std::string;
 
 using bitboard = std::uint64_t;
-
-const int MAX_GENERATABLE_MOVES = {256};
 
 // 0-63 square on bitboard, from a1 to h8. -1 used for no square
 using square = int;
@@ -183,5 +179,19 @@ class ChessMove
         return static_cast<ChessMove::flags>(f);
     }
 };
+
+// contains all data needed to unmake a move
+struct rev_move_data
+{
+    ChessMove    move;
+    unsigned int rev_move_clock;
+    unsigned int castle_r;
+    PIECE        captured_pieceS;
+    bitboard     enp_bb;
+};
+
+const int MAX_GENERATABLE_MOVES = {256};
+
+using move_list = std::array<ChessMove, MAX_GENERATABLE_MOVES>;
 
 #endif // TYPES_INCL

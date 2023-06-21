@@ -194,6 +194,8 @@ void Position::make_move(const ChessMove c)
     square orig_sq = c.get_origin_sq();
     square dest_sq = c.get_dest_sq();
 
+    assert(orig_sq != dest_sq);
+
     PIECE moved_piece      = piece_at_sq(orig_sq);
     PIECE after_move_piece = c.is_promo() ? c.get_promo_piece() : moved_piece;
 
@@ -207,15 +209,30 @@ void Position::make_move(const ChessMove c)
     // en passante is always cleared after a move, or set if it was double push
     if (c.is_double_push())
         pos_bbs[EN_PASSANTE] = BB_SQ(orig_sq + pushdir);
+
     else
         pos_bbs[EN_PASSANTE] = BB_ZERO;
 
     // moving pawns is not reversible
     if (moved_piece == PAWN)
         rev_moves = 0;
+
     // moving king always unsets castle rights for moving side
     else if (moved_piece == KING)
         castle_r &= (stm ? WCR : BCR);
+
+    // if we move rook from starting square, we must unset castle rights
+    else if (moved_piece == ROOK)
+    {
+        square ks_rooksq = stm ? 63 : 7;
+        square qs_rooksq = stm ? 56 : 0;
+
+        if (orig_sq == ks_rooksq)
+            castle_r &= (stm ? ~BKS : ~WKS);
+
+        else if (orig_sq == qs_rooksq)
+            castle_r &= (stm ? ~BQS : ~WQS);
+    }
 
     // special moves section
     if (c.is_capture())
@@ -228,6 +245,20 @@ void Position::make_move(const ChessMove c)
             cap_square -= pushdir;
 
         PIECE cap_piece = piece_at_sq(cap_square);
+
+        // if we capture enemy rook from starting square, we must unset castle rights
+        if (cap_piece == ROOK)
+        {
+            square enemy_ks_rooksq = stm ? 7 : 63;
+            square enemy_qs_rooksq = stm ? 0 : 56;
+
+            printf("Hello, we captured a rook!!!");
+            if (dest_sq == enemy_ks_rooksq)
+                castle_r &= (stm ? ~WKS : ~BKS);
+
+            else if (dest_sq == enemy_qs_rooksq)
+                castle_r &= (stm ? ~WQS : ~BQS);
+        }
 
         // remove the captured piece
         BB_UNSET(pos_bbs[cap_piece], cap_square);
@@ -267,9 +298,6 @@ void Position::make_move(const ChessMove c)
 
     BB_UNSET(pos_bbs[stm], orig_sq);
     BB_SET(pos_bbs[stm], dest_sq);
-
-    // TODO: remove castle rights if we moved the rooks or captured a rook
-    // TODO: store state needed for unmake
 
     // now it's the other side's turn
     stm = static_cast<COLOR>(!stm);

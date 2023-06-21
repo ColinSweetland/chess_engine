@@ -6,19 +6,23 @@
 
 #include <array>
 #include <iostream>
+#include <vector>
 
 class Position
 {
   private:
     // two for each color, 6 for pieces, 1 for enpassante sq
-    std::array<bitboard, 9> pos_bbs;
+    std::array<bitboard, 9> pos_bbs{0};
 
-    unsigned int castle_r;
+    // all moves that can be unmade
+    std::vector<rev_move_data> unmake_stack{};
 
-    unsigned int rev_moves;
-    unsigned int full_moves;
+    unsigned int castle_r{0};
 
-    COLOR stm;
+    unsigned int rev_moves{0};
+    unsigned int full_moves{0};
+
+    COLOR stm{WHITE};
 
   public:
     // default to the starting position
@@ -36,7 +40,7 @@ class Position
     bool sq_attacked(int sq, COLOR attacking_color) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
-    int pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& pl_moves) const;
+    int pseudo_legal_moves(move_list& pl_moves) const;
 
     void make_move(const ChessMove c);
     void unmake_last();

@@ -2,8 +2,6 @@
 #include <array>
 #include <x86intrin.h>
 
-#include <iostream>
-
 #include "bitboard.h"
 #include "movegen.h"
 #include "position.h"
