@@ -197,7 +197,10 @@ void Position::make_move(const ChessMove c)
     assert(orig_sq != dest_sq);
 
     PIECE moved_piece      = piece_at_sq(orig_sq);
+    PIECE captured_piece   = NO_PIECE;
     PIECE after_move_piece = c.is_promo() ? c.get_promo_piece() : moved_piece;
+
+    rev_move_data rmd{c, rev_moves, castle_r, captured_piece, pos_bbs[EN_PASSANTE]};
 
     int pushdir = PAWN_PUSH_DIR(stm);
 
@@ -244,15 +247,16 @@ void Position::make_move(const ChessMove c)
         if (c.is_en_passante())
             cap_square -= pushdir;
 
-        PIECE cap_piece = piece_at_sq(cap_square);
+        captured_piece = piece_at_sq(cap_square);
+
+        rmd.captured_piece = captured_piece;
 
         // if we capture enemy rook from starting square, we must unset castle rights
-        if (cap_piece == ROOK)
+        if (captured_piece == ROOK)
         {
             square enemy_ks_rooksq = stm ? 7 : 63;
             square enemy_qs_rooksq = stm ? 0 : 56;
 
-            printf("Hello, we captured a rook!!!");
             if (dest_sq == enemy_ks_rooksq)
                 castle_r &= (stm ? ~WKS : ~BKS);
 
@@ -261,7 +265,7 @@ void Position::make_move(const ChessMove c)
         }
 
         // remove the captured piece
-        BB_UNSET(pos_bbs[cap_piece], cap_square);
+        BB_UNSET(pos_bbs[captured_piece], cap_square);
         BB_UNSET(pos_bbs[!stm], cap_square);
 
         // captures are not reversible
@@ -301,6 +305,80 @@ void Position::make_move(const ChessMove c)
 
     // now it's the other side's turn
     stm = static_cast<COLOR>(!stm);
+
+    // store reversible move data
+    unmake_stack.push_back(rmd);
+}
+
+void Position::unmake_last(void)
+{
+    rev_move_data rmd = unmake_stack.back();
+    unmake_stack.pop_back();
+
+    ChessMove m = rmd.move;
+
+    // restore unrestorable data
+    pos_bbs[EN_PASSANTE] = rmd.enp_bb;
+    rev_moves            = rmd.rev_move_clock;
+    castle_r             = rmd.castle_r;
+
+    PIECE after_move_piece = piece_at_sq(m.get_dest_sq());
+    PIECE orig_piece       = m.is_promo() ? PAWN : after_move_piece;
+
+    square dest_sq = m.get_dest_sq();
+    square orig_sq = m.get_origin_sq();
+
+    // swap stm back to who made the move
+    stm = static_cast<COLOR>(!stm);
+
+    // if the move was made by black, decrement
+    full_moves -= stm;
+
+    // remove piece from dest sq
+    BB_UNSET(pos_bbs[stm], dest_sq);
+    BB_UNSET(pos_bbs[after_move_piece], dest_sq);
+
+    // restore piece to orig sq
+    BB_SET(pos_bbs[stm], orig_sq);
+    BB_SET(pos_bbs[orig_piece], orig_sq);
+
+    if (m.is_capture())
+    {
+        square cap_sq = dest_sq;
+
+        if (m.is_en_passante())
+        {
+            cap_sq -= PAWN_PUSH_DIR(stm);
+        }
+
+        // restore captured piece
+        BB_SET(pos_bbs[!stm], cap_sq);
+        BB_SET(pos_bbs[rmd.captured_piece], cap_sq);
+    }
+    else if (m.get_flags() == ChessMove::KINGSIDE_CASTLE)
+    {
+        square rook_orig = stm ? 63 : 7;
+        square rook_dest = dest_sq + WEST;
+
+        // restore rook to it's original square
+        BB_UNSET(pos_bbs[ROOK], rook_dest);
+        BB_UNSET(pos_bbs[stm], rook_dest);
+
+        BB_SET(pos_bbs[ROOK], rook_orig);
+        BB_SET(pos_bbs[stm], rook_orig);
+    }
+    else if (m.get_flags() == ChessMove::QUEENSIDE_CASTLE)
+    {
+        square rook_orig = stm ? 56 : 0;
+        square rook_dest = dest_sq + EAST;
+
+        // restore rook to it's original square
+        BB_UNSET(pos_bbs[ROOK], rook_dest);
+        BB_UNSET(pos_bbs[stm], rook_dest);
+
+        BB_SET(pos_bbs[ROOK], rook_orig);
+        BB_SET(pos_bbs[stm], rook_orig);
+    }
 }
 
 // Forsyth Edwards Notation is a common string based representation of a chess position

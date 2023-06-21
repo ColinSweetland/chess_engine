@@ -186,7 +186,7 @@ struct rev_move_data
     ChessMove    move;
     unsigned int rev_move_clock;
     unsigned int castle_r;
-    PIECE        captured_pieceS;
+    PIECE        captured_piece;
     bitboard     enp_bb;
 };
 

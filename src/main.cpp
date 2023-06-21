@@ -1,4 +1,5 @@
 #include <array>
+#include <cassert>
 #include <iostream>
 
 #include "bitboard.h"
@@ -53,7 +54,11 @@ int main(void)
 
     // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
     // Position pos{};
-    Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R b KQkq c3 0 1"};
+    // Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R w KQkq c3 15 23"};
+
+    Position pos{"r3k3/1P5p/8/8/2PpB3/8/P6P/R3K2R b KQq c3 15 23"};
+
+    str orig_fen = pos.FEN();
 
     move_list pl_moves = {};
 
@@ -62,13 +67,19 @@ int main(void)
     std::cout << pos;
 
     for (int i = 0; i < mvc; i++)
-        std::cout << i << ' ' << pl_moves[i];
+    {
+        pos.make_move(pl_moves[i]);
 
-    pos.make_move(pl_moves[4]);
+        std::cout << "\nmade Move: " << pl_moves[i] << "\n" << pos;
 
-    std::cout << pos;
+        assert(pos.FEN() != orig_fen);
 
-    std::cout << pos.FEN();
+        pos.unmake_last();
+
+        std::cout << "\nunmade Move\n" << pos;
+
+        assert(orig_fen == pos.FEN());
+    }
 
     return 0;
 }
