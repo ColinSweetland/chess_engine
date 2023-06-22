@@ -252,8 +252,9 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
     // so even if we are black, we still use "white" here in this section
     char moving_cr = ((castle_r) >> (stm * 2)) & WCR;
 
+    bool check = is_check(stm);
     // kingside
-    if (moving_cr & WKS)
+    if (!check && (moving_cr & WKS))
     {
         // squares between rook and king must be free
         // aka the kingside rook can attack our king
@@ -275,7 +276,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
     }
 
     // Queenside, see comments above
-    if (moving_cr & WQS)
+    if (!check && (moving_cr & WQS))
     {
         int queenside_rooksq = stm == BLACK ? 56 : 0;
 
