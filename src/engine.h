@@ -3,10 +3,10 @@
 
 #include "position.h"
 
-uint64_t perft(Position& p, int depth);
+uint64_t perft(Position& pos, int depth);
 
-void perft_report(Position& p, int depth);
+void perft_report(Position& pos, int depth);
 
-void perft_report_divided(Position& p, int depth);
+void perft_report_divided(Position& pos, int depth);
 
 #endif // ENGINE_INCL

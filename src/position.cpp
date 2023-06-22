@@ -394,9 +394,11 @@ void Position::unmake_last(void)
 bool Position::move_is_legal(ChessMove pseudo_legal)
 {
     // square of side to move
-    square kng_sq = BB_LSB(pieces(side_to_move(), KING));
+    COLOR side_moving = side_to_move();
 
     make_move(pseudo_legal);
+
+    square kng_sq = BB_LSB(pieces(side_moving, KING));
 
     // if the side that moved is in check, it's illegal
     if (sq_attacked(kng_sq, side_to_move()))

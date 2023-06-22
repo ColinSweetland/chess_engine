@@ -55,14 +55,16 @@ int main(void)
     init();
 
     // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
-    // Position pos{};
+    Position pos{};
     // Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R w KQkq c3 15 23"};
 
-    Position pos{};
+    // Position pos{"rnbqkbnr/pppp1ppp/4p3/8/8/BP6/P1PPPPPP/RN1QKBNR b KQkq - 1 2"};
 
-    int depth = 2;
+    std::cout << pos;
 
-    perft_report(pos, depth);
+    int depth = 5;
+
+    perft_report_divided(pos, depth);
 
     return 0;
 }
