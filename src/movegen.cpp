@@ -356,10 +356,10 @@ static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~41kb (8 bytes (bitboard) * 5185 entries)
-static std::array<bitboard, 5185> BISHOP_MOVE_LOOKUP = {0};
+std::array<const bitboard, 5185> BISHOP_MOVE_LOOKUP = {0};
 
 // squares set might contain pieces that block bishop moves
-static constexpr std::array<bitboard, 64> BISHOP_BLOCKER_MASK = {
+static constexpr std::array<const bitboard, 64> BISHOP_BLOCKER_MASK = {
     0x0040201008040200, 0x0000402010080400, 0x0000004020100a00, 0x0000000040221400, 0x0000000002442800,
     0x0000000204085000, 0x0000020408102000, 0x0002040810204000, 0x0020100804020000, 0x0040201008040000,
     0x00004020100a0000, 0x0000004022140000, 0x0000000244280000, 0x0000020408500000, 0x0002040810200000,
@@ -379,7 +379,7 @@ static constexpr std::array<bitboard, 64> BISHOP_BLOCKER_MASK = {
 // because there are 6 squares where blockers can be
 // so for a2 we start at index 63 (64th element)
 // max = 5184
-static constexpr std::array<uint16_t, 64> BISHOP_MOVE_START_IDX = {
+constexpr std::array<const uint16_t, 64> BISHOP_MOVE_START_IDX = {
     0,    63,   94,   125,  156,  187,  218,  249,  312,  343,  374,  405,  436,  467,  498,  529,
     560,  591,  622,  749,  876,  1003, 1130, 1161, 1192, 1223, 1254, 1381, 1892, 2403, 2530, 2561,
     2592, 2623, 2654, 2781, 3292, 3803, 3930, 3961, 3992, 4023, 4054, 4181, 4308, 4435, 4562, 4593,
@@ -413,7 +413,9 @@ void init_bishop_tables(void)
 
             int table_idx = BISHOP_MOVE_START_IDX[curr_sq] + blockers;
 
-            BISHOP_MOVE_LOOKUP[table_idx] = moves;
+            // const cast because we want to be able to write to it now,
+            // but never again
+            const_cast<bitboard&>(BISHOP_MOVE_LOOKUP[table_idx]) = moves;
         }
     }
 }
@@ -423,10 +425,10 @@ void init_bishop_tables(void)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~800kb (8 bytes (bitboard) * 102337 entries)
-static std::array<bitboard, 102337> ROOK_MOVE_LOOKUP = {0};
+std::array<const bitboard, 102337> ROOK_MOVE_LOOKUP = {0};
 
 // squares set might contain pieces that block rook moves
-static constexpr std::array<bitboard, 64> ROOK_BLOCKER_MASK = {
+constexpr std::array<const bitboard, 64> ROOK_BLOCKER_MASK = {
     0x000101010101017e, 0x000202020202027c, 0x000404040404047a, 0x0008080808080876, 0x001010101010106e,
     0x002020202020205e, 0x004040404040403e, 0x008080808080807e, 0x0001010101017e00, 0x0002020202027c00,
     0x0004040404047a00, 0x0008080808087600, 0x0010101010106e00, 0x0020202020205e00, 0x0040404040403e00,
@@ -446,7 +448,7 @@ static constexpr std::array<bitboard, 64> ROOK_BLOCKER_MASK = {
 // because there are 12 squares where blockers can be
 // so for a2 we start at index 4095 (4096th element)
 // max idx = 102336
-static constexpr std::array<uint32_t, 64> ROOK_MOVE_START_IDX = {
+constexpr std::array<const uint32_t, 64> ROOK_MOVE_START_IDX = {
     0,     4095,  6142,  8189,  10236, 12283, 14330, 16377, 20472, 22519, 23542, 24565, 25588, 26611, 27634, 28657,
     30704, 32751, 33774, 34797, 35820, 36843, 37866, 38889, 40936, 42983, 44006, 45029, 46052, 47075, 48098, 49121,
     51168, 53215, 54238, 55261, 56284, 57307, 58330, 59353, 61400, 63447, 64470, 65493, 66516, 67539, 68562, 69585,
@@ -481,7 +483,7 @@ void init_rook_tables(void)
 
             int table_idx = ROOK_MOVE_START_IDX[curr_sq] + blockers;
 
-            ROOK_MOVE_LOOKUP[table_idx] = moves;
+            const_cast<bitboard&>(ROOK_MOVE_LOOKUP[table_idx]) = moves;
         }
     }
 }
