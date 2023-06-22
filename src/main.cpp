@@ -46,8 +46,8 @@ void uci_engine_loop(void)
 
 void init(void)
 {
-    init_rook_tables();
-    init_bishop_tables();
+    init_rook_table();
+    init_bishop_table();
 }
 
 int main(void)

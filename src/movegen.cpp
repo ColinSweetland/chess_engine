@@ -356,7 +356,7 @@ static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~41kb (8 bytes (bitboard) * 5185 entries)
-std::array<const bitboard, 5185> BISHOP_MOVE_LOOKUP = {0};
+std::array<std::vector<bitboard>, 64> BISHOP_MOVE_LOOKUP = {{}};
 
 // squares set might contain pieces that block bishop moves
 static constexpr std::array<const bitboard, 64> BISHOP_BLOCKER_MASK = {
@@ -374,24 +374,13 @@ static constexpr std::array<const bitboard, 64> BISHOP_BLOCKER_MASK = {
     0x0000402010080400, 0x0002040810204000, 0x0004081020400000, 0x000a102040000000, 0x0014224000000000,
     0x0028440200000000, 0x0050080402000000, 0x0020100804020000, 0x0040201008040200};
 
-// Where you can begin to lookup the move bb for a certain square
-// for example, in a1 we have 63 (2^6 - 1) possible blocker combos,
-// because there are 6 squares where blockers can be
-// so for a2 we start at index 63 (64th element)
-// max = 5184
-constexpr std::array<const uint16_t, 64> BISHOP_MOVE_START_IDX = {
-    0,    63,   94,   125,  156,  187,  218,  249,  312,  343,  374,  405,  436,  467,  498,  529,
-    560,  591,  622,  749,  876,  1003, 1130, 1161, 1192, 1223, 1254, 1381, 1892, 2403, 2530, 2561,
-    2592, 2623, 2654, 2781, 3292, 3803, 3930, 3961, 3992, 4023, 4054, 4181, 4308, 4435, 4562, 4593,
-    4624, 4655, 4686, 4717, 4748, 4779, 4810, 4841, 4872, 4935, 4966, 4997, 5028, 5059, 5090, 5121};
-
-bitboard bb_bishop_moves(square sq, const bitboard& blockers)
+const bitboard& bb_bishop_moves(square sq, const bitboard& blockers)
 {
     bitboard blocker_key = BB_PEXT(blockers, BISHOP_BLOCKER_MASK[sq]);
-    return BISHOP_MOVE_LOOKUP[BISHOP_MOVE_START_IDX[sq] + blocker_key];
+    return BISHOP_MOVE_LOOKUP.at(sq).at(blocker_key);
 }
 
-void init_bishop_tables(void)
+void init_bishop_table(void)
 {
     DIR dirs[4] = {NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST};
     // iterate over each square
@@ -411,12 +400,12 @@ void init_bishop_tables(void)
 
             bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
 
-            int table_idx = BISHOP_MOVE_START_IDX[curr_sq] + blockers;
-
             // const cast because we want to be able to write to it now,
             // but never again
-            const_cast<bitboard&>(BISHOP_MOVE_LOOKUP[table_idx]) = moves;
+            BISHOP_MOVE_LOOKUP.at(curr_sq).push_back(moves);
         }
+
+        BISHOP_MOVE_LOOKUP.at(curr_sq).shrink_to_fit();
     }
 }
 
@@ -425,7 +414,7 @@ void init_bishop_tables(void)
 // lookup moves [idxlookup[sq] + PEXT(blockers)]
 // we can make this more memory eff later (many elements are copies of eachother)
 // size: ~800kb (8 bytes (bitboard) * 102337 entries)
-std::array<const bitboard, 102337> ROOK_MOVE_LOOKUP = {0};
+std::array<std::vector<bitboard>, 64> ROOK_MOVE_LOOKUP = {{}};
 
 // squares set might contain pieces that block rook moves
 constexpr std::array<const bitboard, 64> ROOK_BLOCKER_MASK = {
@@ -448,20 +437,19 @@ constexpr std::array<const bitboard, 64> ROOK_BLOCKER_MASK = {
 // because there are 12 squares where blockers can be
 // so for a2 we start at index 4095 (4096th element)
 // max idx = 102336
-constexpr std::array<const uint32_t, 64> ROOK_MOVE_START_IDX = {
-    0,     4095,  6142,  8189,  10236, 12283, 14330, 16377, 20472, 22519, 23542, 24565, 25588, 26611, 27634, 28657,
-    30704, 32751, 33774, 34797, 35820, 36843, 37866, 38889, 40936, 42983, 44006, 45029, 46052, 47075, 48098, 49121,
-    51168, 53215, 54238, 55261, 56284, 57307, 58330, 59353, 61400, 63447, 64470, 65493, 66516, 67539, 68562, 69585,
-    71632, 73679, 74702, 75725, 76748, 77771, 78794, 79817, 81864, 85959, 88006, 90053, 92100, 94147, 96194, 98241};
+// constexpr std::array<const uint32_t, 64> ROOK_MOVE_START_IDX = {
+//     0,     4095,  6142,  8189,  10236, 12283, 14330, 16377, 20472, 22519, 23542, 24565, 25588, 26611, 27634, 28657,
+//     30704, 32751, 33774, 34797, 35820, 36843, 37866, 38889, 40936, 42983, 44006, 45029, 46052, 47075, 48098, 49121,
+//     51168, 53215, 54238, 55261, 56284, 57307, 58330, 59353, 61400, 63447, 64470, 65493, 66516, 67539, 68562, 69585,
+//     71632, 73679, 74702, 75725, 76748, 77771, 78794, 79817, 81864, 85959, 88006, 90053, 92100, 94147, 96194, 98241};
 
-bitboard bb_rook_moves(square sq, const bitboard& blockers)
+const bitboard& bb_rook_moves(square sq, const bitboard& blockers)
 {
     bitboard blocker_key = BB_PEXT(blockers, ROOK_BLOCKER_MASK[sq]);
-
-    return ROOK_MOVE_LOOKUP[ROOK_MOVE_START_IDX[sq] + blocker_key];
+    return ROOK_MOVE_LOOKUP.at(sq).at(blocker_key);
 }
 
-void init_rook_tables(void)
+void init_rook_table(void)
 {
     DIR dirs[4] = {NORTH, SOUTH, EAST, WEST};
     // iterate over each square
@@ -481,10 +469,10 @@ void init_rook_tables(void)
 
             bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
 
-            int table_idx = ROOK_MOVE_START_IDX[curr_sq] + blockers;
-
-            const_cast<bitboard&>(ROOK_MOVE_LOOKUP[table_idx]) = moves;
+            ROOK_MOVE_LOOKUP.at(curr_sq).push_back(moves);
         }
+
+        ROOK_MOVE_LOOKUP.at(curr_sq).shrink_to_fit();
     }
 }
 
@@ -513,7 +501,7 @@ static const bitboard king_lookup[64] = {
     0x2838000000000000ULL, 0x5070000000000000ULL, 0xa0e0000000000000ULL, 0x40c0000000000000ULL};
 
 // The thrill is gone
-bitboard bb_king_moves(square sq) { return king_lookup[sq]; }
+const bitboard& bb_king_moves(square sq) { return king_lookup[sq]; }
 
 //-------------------KNIGHTS---------------------
 static const bitboard knight_lookup[64] = {
@@ -531,7 +519,7 @@ static const bitboard knight_lookup[64] = {
     0x2000204000000000ULL, 0x0004020000000000ULL, 0x0008050000000000ULL, 0x00110A0000000000ULL, 0x0022140000000000ULL,
     0x0044280000000000ULL, 0x0088500000000000ULL, 0x0010A00000000000ULL, 0x0020400000000000ULL};
 
-bitboard bb_knight_moves(square sq) { return knight_lookup[sq]; }
+const bitboard& bb_knight_moves(square sq) { return knight_lookup[sq]; }
 
 // ------------------PAWNS-----------------------
 // 1. attacks

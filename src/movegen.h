@@ -9,24 +9,24 @@
 std::ostream& operator<<(std::ostream& out, const ChessMove& move);
 
 // ----- BISHOP MOVES-----
-void init_bishop_tables(void);
+void init_bishop_table(void);
 
-bitboard bb_bishop_moves(square sq, const bitboard& blockers);
+const bitboard& bb_bishop_moves(square sq, const bitboard& blockers);
 
 // ----- ROOK MOVES-----
-void init_rook_tables(void);
+void init_rook_table(void);
 
-bitboard bb_rook_moves(square sq, const bitboard& blockers);
+const bitboard& bb_rook_moves(square sq, const bitboard& blockers);
 
 // ----- QUEEN MOVES -----
 
 bitboard bb_queen_moves(square sq, const bitboard& blockers);
 
 // ----- KING MOVES -----
-bitboard bb_king_moves(square sq);
+const bitboard& bb_king_moves(square sq);
 
 //------ KNIGHT MOVES ---
-bitboard bb_knight_moves(square sq);
+const bitboard& bb_knight_moves(square sq);
 
 // ----- PAWN MOVES -----
 // 1. Attacks
