@@ -433,11 +433,18 @@ Position::Position(const char* fenstr) : pos_bbs{0}, castle_r{0}
         sq = rankfile_to_sq(bb_rank, bb_file);
         fen >> fc;
 
+        // printf("SQ: %d R: %d F: %d C: %c\n", sq, bb_rank, bb_file, fc);
+
         switch (fc)
         {
         // if we find a number: move num - 1 squares
         case '1' ... '8':
             bb_file += fc - '1';
+
+            // ugly hack -> if the last entry in the section is
+            // a number, then break loop. seems to work
+            if (bb_rank == 1 && bb_file >= 8)
+                sq = 7;
             break;
 
         // end of row, move down rank and to first file

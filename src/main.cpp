@@ -56,13 +56,15 @@ int main(void)
 
     // Position pos{"rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"};
     Position pos{};
-    // Position pos{"r3k2r/p6p/8/8/2PbB3/8/P6P/R3K2R w KQkq c3 15 23"};
 
     // Position pos{"rnbqkbnr/pppp1ppp/4p3/8/8/BP6/P1PPPPPP/RN1QKBNR b KQkq - 1 2"};
 
+    // crash depth 5+
+    // Position pos{"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "};
+
     std::cout << pos;
 
-    int depth = 5;
+    int depth = 4;
 
     perft_report_divided(pos, depth);
 
