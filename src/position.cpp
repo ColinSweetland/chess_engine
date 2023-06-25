@@ -3,11 +3,11 @@
 
 #include <sstream>
 
-#include "bitboard.h"
+#include "bitboard.hpp"
 // #include "movegen.h"
-#include "movegen.h"
-#include "position.h"
-#include "types.h"
+#include "movegen.hpp"
+#include "position.hpp"
+#include "types.hpp"
 
 // the << operator will print the position, nicely formatted
 
@@ -552,8 +552,6 @@ str Position::FEN() const
     str fen_buf{15, ' '};
 
     std::ostringstream fen{fen_buf};
-
-    int piece_color = 0;
 
     PIECE sq_piece;
     int   empty_space_count = 0;

@@ -1,7 +1,7 @@
 #ifndef ENGINE_INCL
 #define ENGINE_INCL
 
-#include "position.h"
+#include "position.hpp"
 
 uint64_t perft(Position& pos, int depth);
 

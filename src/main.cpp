@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <iostream>
 
-#include "bitboard.h"
-#include "engine.h"
-#include "movegen.h"
-#include "position.h"
-#include "types.h"
+#include "bitboard.hpp"
+#include "engine.hpp"
+#include "movegen.hpp"
+#include "position.hpp"
+#include "types.hpp"
 
 #define MAX_UCI_INPUT_SIZE 1024
 
@@ -61,6 +61,9 @@ int main(void)
 
     // crash depth 5+
     // Position pos{"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "};
+
+    // weird crash
+    // Position pos{"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"};
 
     std::cout << pos;
 

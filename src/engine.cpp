@@ -1,8 +1,8 @@
 #include <cassert>
 
-#include "engine.h"
-#include "movegen.h"
-#include "types.h"
+#include "engine.hpp"
+#include "movegen.hpp"
+#include "types.hpp"
 
 uint64_t perft(Position& p, int depth)
 {
@@ -60,7 +60,8 @@ void perft_report_divided(Position& pos, int depth)
 
         nodes_at_pos = perft(pos, depth - 1);
 
-        std::cout << ml.at(ml_index) << ": " << nodes_at_pos << "\t" << pos.FEN();
+        std::cout << ml.at(ml_index) << ": ";
+        std::cout << nodes_at_pos << "\n"; // << pos.FEN();
 
         // std::cout << pos;
         // std::cout << pos.FEN();

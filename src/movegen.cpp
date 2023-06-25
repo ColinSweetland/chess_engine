@@ -2,10 +2,10 @@
 #include <array>
 #include <x86intrin.h>
 
-#include "bitboard.h"
-#include "movegen.h"
-#include "position.h"
-#include "types.h"
+#include "bitboard.hpp"
+#include "movegen.hpp"
+#include "position.hpp"
+#include "types.hpp"
 
 // when we shift east/west, wrapping can happen. To avoid this, we have to mask a row
 static constexpr bitboard e_mask = ~BB_FILE_A;

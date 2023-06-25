@@ -1,8 +1,8 @@
 #ifndef GAMESTATE_INCL
 #define GAMESTATE_INCL
 
-#include "bitboard.h"
-#include "types.h"
+#include "bitboard.hpp"
+#include "types.hpp"
 
 #include <array>
 #include <iostream>

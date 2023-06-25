@@ -1,8 +1,8 @@
 #ifndef MOVEGEN_INCL
 #define MOVEGEN_INCL
 
-#include "bitboard.h"
-#include "types.h"
+#include "bitboard.hpp"
+#include "types.hpp"
 
 //--------------MOVES-------------------
 

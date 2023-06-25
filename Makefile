@@ -1,5 +1,24 @@
 CC		:= clang++
-CFLAGS	:= -Wall -Wextra -Werror -Wpedantic -Wno-unused-variable -Wno-gnu-case-range -fsanitize=undefined,address -g -mbmi2 -std=c++17 -O0 -MMD -MP
+
+# Warnings & sanitizers are good
+CFLAGS	:= -Wall -Wextra -Werror -Wpedantic
+CFLAGS	+= -fsanitize=undefined,address
+
+# I probably shouldn't use the non-standard feature, but it's awesome
+CFLAGS	+= -Wno-gnu-case-range
+
+# -g add debugging info -O optimization level
+CFLAGS 	+= -g3
+CFLAGS	+= -O0
+
+# use bmi instruction set
+CFLAGS	+= -mbmi2
+
+# C++ std
+CFLAGS	+= -std=c++14
+
+# generate .d files which help make
+CFLAGS	+= -MMD -MP
 
 SRC_DIR	:= src
 OBJ_DIR	:= obj

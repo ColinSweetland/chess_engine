@@ -1,10 +1,10 @@
 #ifndef BITBOARD_INCL
 #define BITBOARD_INCL
 
-#include "types.h"
+#include "types.hpp"
 
-#include <immintrin.h>
 #include <cassert>
+#include <immintrin.h>
 // empty: all zeroes
 
 constexpr bitboard BB_ZERO = {0ULL};
