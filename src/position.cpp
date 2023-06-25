@@ -391,23 +391,20 @@ void Position::unmake_last(void)
     }
 }
 
-bool Position::move_is_legal(ChessMove pseudo_legal)
+// try to make pseudo legal move.
+// If move is legal, make the move and return true.
+// If move is not legal, return false.
+bool Position::try_make_move(ChessMove pseudo_legal)
 {
-    // square of side to move
-    COLOR side_moving = side_to_move();
-
     make_move(pseudo_legal);
 
-    square kng_sq = BB_LSB(pieces(side_moving, KING));
-
     // if the side that moved is in check, it's illegal
-    if (sq_attacked(kng_sq, side_to_move()))
+    if (is_check(static_cast<COLOR>(!side_to_move())))
     {
         unmake_last();
         return false;
     }
 
-    unmake_last();
     return true;
 }
 
@@ -662,7 +659,7 @@ str Position::FEN() const
     fen << ' ' << rev_moves << ' ';
 
     // --- FULL MOVE COUNTER ---
-    fen << full_moves << "\n";
+    fen << full_moves;
 
     return fen.str();
 }

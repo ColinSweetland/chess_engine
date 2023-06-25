@@ -1,46 +1,63 @@
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <vector>
 
 #include "engine.hpp"
 #include "movegen.hpp"
 #include "types.hpp"
 
-uint64_t perft(Position& p, int depth)
+void perft(Position& p, int depth, std::vector<uint64_t>& perft_results)
 {
-    move_list pl_moves;
-
-    std::uint64_t nodes = 0;
-
     if (depth == 0)
-        return 1ULL;
+    {
+        perft_results.back() = 1;
+        return;
+    }
+
+    move_list pl_moves;
 
     int n_moves = p.pseudo_legal_moves(pl_moves);
 
+    // printf("SIZEOF RES %zu\n", perft_results.size());
+    // printf("DEPTH: %d\n", depth);
+    // exit(1);
+
+    perft_results[depth - 1] += n_moves;
+
     for (int i = 0; i < n_moves; i++)
     {
-        if (p.move_is_legal(pl_moves[i]))
+        if (p.try_make_move(pl_moves[i]))
         {
-            // NOTE this is unefficient (we make and unmake twice)
-            // maybe make a method like
-            // bool try_make_move() -> try making pseudolegal move, returns if successful
-            p.make_move(pl_moves[i]);
-            nodes += perft(p, depth - 1);
+            perft(p, depth - 1, perft_results);
             p.unmake_last();
         }
+        else
+        {
+            // there was an illegal move, it doesn't count
+            perft_results[depth - 1] -= 1;
+        }
     }
-
-    return nodes;
 }
 
 void perft_report(Position& pos, int depth)
 {
-    assert(depth >= 1);
-    for (int i = 1; i <= depth; i++)
+    assert(depth >= 0);
+
+    std::vector<uint64_t> perft_results(depth + 1, 0);
+
+    perft(pos, depth, perft_results);
+
+    printf("DEPTH | NODES \n------------------\n");
+    for (int i = depth; i >= 0; i--)
     {
-        printf("DEPTH: %-5d NODES : %-15lu\n\n", i, perft(pos, i));
+        printf("%-6d| %-15lu\n", depth - i, perft_results.at(i));
     }
+    printf("\n");
 }
 
-void perft_report_divided(Position& pos, int depth)
+void perft_report_divided(Position& pos, int depth, bool print_fen)
 {
     assert(depth >= 1);
 
@@ -48,27 +65,29 @@ void perft_report_divided(Position& pos, int depth)
 
     int move_count = pos.pseudo_legal_moves(ml);
 
-    int total_nodes  = 0;
-    int nodes_at_pos = 0;
+    // nodes are only leaves (depth 0)
+    int total_nodes = 0;
 
-    for (int ml_index = 0; ml_index < move_count; ml_index++)
+    for (int i = 0; i < move_count; i++)
     {
-        if (!pos.move_is_legal(ml[ml_index]))
-            continue;
+        if (pos.try_make_move(ml[i]))
+        {
+            std::vector<uint64_t> perft_results(depth, 0);
 
-        pos.make_move(ml[ml_index]);
+            perft(pos, depth - 1, perft_results);
 
-        nodes_at_pos = perft(pos, depth - 1);
+            std::cout << ml[i] << ": " << perft_results.front();
 
-        std::cout << ml.at(ml_index) << ": ";
-        std::cout << nodes_at_pos << "\n"; // << pos.FEN();
+            if (print_fen)
+                std::cout << '\t' << pos.FEN();
 
-        // std::cout << pos;
-        // std::cout << pos.FEN();
+            std::cout << '\n';
 
-        pos.unmake_last();
-        total_nodes += nodes_at_pos;
+            total_nodes += perft_results.front();
+
+            pos.unmake_last();
+        }
     }
 
-    printf("\nNodes searched: %-15d\n", total_nodes);
+    std::cout << "\nNodes searched: " << total_nodes << '\n';
 }
