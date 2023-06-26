@@ -1,6 +1,7 @@
 #ifndef TYPES_INCL
 #define TYPES_INCL
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 

@@ -22,6 +22,9 @@ std::ostream& operator<<(std::ostream& out, const ChessMove& m)
 
     out << FILE_CHAR_FROM_SQ(dest) << RANK_CHAR_FROM_SQ(dest);
 
+    if (m.is_promo())
+        out << piece_to_char.at(m.get_promo_piece());
+
     return out;
 }
 
