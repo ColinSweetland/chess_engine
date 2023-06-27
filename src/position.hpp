@@ -26,7 +26,7 @@ class Position
 
   public:
     // default to the starting position
-    Position(const char* fenstr = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Position(str fenstr = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     inline const COLOR& side_to_move() const { return stm; }
 

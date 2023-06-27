@@ -3,10 +3,15 @@
 
 #include "position.hpp"
 
-void perft(Position& pos, int depth, std::vector<uint64_t>& perft_results);
+namespace Engine
+{
+
+void uci_loop();
 
 void perft_report(Position& pos, int depth);
 
 void perft_report_divided(Position& pos, int depth, bool print_fen = false);
+
+} // namespace Engine
 
 #endif // ENGINE_INCL

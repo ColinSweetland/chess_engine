@@ -411,7 +411,7 @@ bool Position::try_make_move(ChessMove pseudo_legal)
 // Forsyth Edwards Notation is a common string based representation of a chess position
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-Position::Position(const char* fenstr) : pos_bbs{0}, castle_r{0}
+Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
 {
     std::istringstream fen{fenstr};
 
