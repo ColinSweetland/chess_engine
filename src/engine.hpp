@@ -2,9 +2,12 @@
 #define ENGINE_INCL
 
 #include "position.hpp"
+#include "types.hpp"
 
 namespace Engine
 {
+
+ChessMove best_move(Position pos);
 
 void uci_loop();
 

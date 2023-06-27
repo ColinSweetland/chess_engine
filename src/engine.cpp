@@ -1,4 +1,5 @@
 #include <cassert>
+#include <random>
 #include <sstream>
 
 #include "engine.hpp"
@@ -81,6 +82,26 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
     }
 
     std::cout << "\nNodes searched: " << total_nodes << '\n';
+}
+
+// Find the best move in a position
+// currently just find a random legal move
+
+ChessMove Engine::best_move(Position pos)
+{
+    move_list ml = pos.pseudo_legal_moves();
+    move_list legal;
+
+    for (auto m : ml)
+    {
+        if (pos.try_make_move(m))
+        {
+            legal.push_back(m);
+            pos.unmake_last();
+        }
+    }
+
+    return legal[std::rand() % legal.size()];
 }
 
 const size_t MAX_UCI_INPUT_SIZE = 1024;
@@ -172,6 +193,13 @@ void Engine::uci_loop()
             // ucinewgame -> next position command will be a new game
             //            -> reset necessary state (we have none)
             std::cout << "info string got command 'ucinewgame' but nothing to do\n";
+        }
+        else if (cmd_tokens[0] == "go")
+        {
+            // go -> many different commands depending on subcommands
+            //    -> mainly search for next best move
+
+            std::cout << "bestmove " << best_move(pos) << '\n';
         }
         //*******CUSTOM COMMANDS*********
         else if (cmd_tokens[0] == "printpos")
