@@ -1,5 +1,6 @@
 // need for PEXT/PDEP
 #include <array>
+#include <cstddef>
 #include <x86intrin.h>
 
 #include "bitboard.hpp"
@@ -29,25 +30,32 @@ std::ostream& operator<<(std::ostream& out, const ChessMove& m)
 }
 
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
-int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& pl_moves) const
+move_list Position::pseudo_legal_moves() const
 {
-    int move_count = 0;
+    move_list pl_moves{};
+
+    // info: https://chess.stackexchange.com/questions/23135/what-is-the-average-number-of-legal-moves-per-turn
+    // Average legal moves is about 30.
+    // Average legal moves at peak is about 40
+    // since we are generating pseudolegal, we need some extra space also. 50 sounds good
+    // so in the vast majority of normal positions, we will need 0 resizes
+    // in extreme positions we might need 1
+    // in most extreme we would need 2
+    pl_moves.reserve(50);
 
     const bitboard occ   = pieces();
     const bitboard pawns = pieces(stm, PAWN);
 
-    // only used for pawns
-    const bitboard enemy_pieces = pieces(static_cast<COLOR>(!stm)) | pieces(EN_PASSANTE);
-
+    const bitboard pawn_capturable  = pieces(static_cast<COLOR>(!stm)) | pieces(EN_PASSANTE);
     const bitboard moveable_squares = ~pieces(stm);
+
+    const DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
+    const int pawn_promo_rank = PAWN_PROMO_RANK(stm);
 
     bitboard p_single = bb_pawn_single_moves(pawns, occ, stm);
     bitboard p_double = bb_pawn_double_moves(p_single, occ, stm);
-    bitboard p_att_e  = bb_pawn_attacks_e(pawns, enemy_pieces, stm);
-    bitboard p_att_w  = bb_pawn_attacks_w(pawns, enemy_pieces, stm);
-
-    DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
-    int pawn_promo_rank = PAWN_PROMO_RANK(stm);
+    bitboard p_att_e  = bb_pawn_attacks_e(pawns, pawn_capturable, stm);
+    bitboard p_att_w  = bb_pawn_attacks_w(pawns, pawn_capturable, stm);
 
     // --- PAWNS ---
 
@@ -62,14 +70,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::KNIGHT_PROMO};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::BISHOP_PROMO};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::ROOK_PROMO};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::QUEEN_PROMO};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::KNIGHT_PROMO});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::BISHOP_PROMO});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::ROOK_PROMO});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::QUEEN_PROMO});
         }
         else
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::NO_FLAGS};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::NO_FLAGS});
         }
     }
 
@@ -82,7 +90,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         square orig_sq = dest_sq - (pawn_push_dir * 2);
 
-        pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::flags::DOUBLE_PUSH};
+        pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::DOUBLE_PUSH});
     }
 
     // pawn attacks east
@@ -100,14 +108,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)});
         }
         else
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -126,14 +134,14 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)};
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)});
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)});
         }
         else
         {
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -156,7 +164,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -179,7 +187,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -202,7 +210,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -226,7 +234,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves[move_count++] = {orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
         }
     }
 
@@ -246,7 +254,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
 
         PIECE captured = piece_at_sq(dest_sq);
 
-        pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)};
+        pl_moves.push_back({kng_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
     }
 
     // --- CASTLING ---
@@ -274,7 +282,7 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
         {
             square dest_sq = kng_sq + (EAST * 2);
 
-            pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::flags::KINGSIDE_CASTLE};
+            pl_moves.push_back({kng_sq, dest_sq, ChessMove::flags::KINGSIDE_CASTLE});
         }
     }
 
@@ -292,11 +300,12 @@ int Position::pseudo_legal_moves(std::array<ChessMove, MAX_GENERATABLE_MOVES>& p
         {
             square dest_sq = kng_sq + (WEST * 2);
 
-            pl_moves[move_count++] = {kng_sq, dest_sq, ChessMove::flags::QUEENSIDE_CASTLE};
+            pl_moves.push_back({kng_sq, dest_sq, ChessMove::flags::QUEENSIDE_CASTLE});
         }
     }
 
-    return move_count;
+    pl_moves.shrink_to_fit(); // we are done adding elements
+    return pl_moves;
 }
 
 // Adapted from chessprogramming wiki

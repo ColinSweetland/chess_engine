@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 /* This file will define the basic types used in the engine */
 
@@ -179,8 +180,6 @@ struct rev_move_data
     bitboard     enp_bb;
 };
 
-const int MAX_GENERATABLE_MOVES = {256};
-
-using move_list = std::array<ChessMove, MAX_GENERATABLE_MOVES>;
+using move_list = std::vector<ChessMove>;
 
 #endif // TYPES_INCL

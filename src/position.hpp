@@ -41,7 +41,7 @@ class Position
     bool is_check(COLOR c) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
-    int pseudo_legal_moves(move_list& pl_moves) const;
+    move_list pseudo_legal_moves() const;
 
     void make_move(const ChessMove c);
     bool try_make_move(const ChessMove c);

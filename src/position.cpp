@@ -394,7 +394,7 @@ void Position::unmake_last(void)
 // try to make pseudo legal move.
 // If move is legal, make the move and return true.
 // If move is not legal, return false.
-bool Position::try_make_move(ChessMove pseudo_legal)
+bool Position::try_make_move(const ChessMove pseudo_legal)
 {
     make_move(pseudo_legal);
 

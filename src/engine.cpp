@@ -1,17 +1,12 @@
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <iostream>
 #include <sstream>
-#include <string>
-#include <vector>
 
 #include "engine.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
 
-static void perft(Position& p, int depth, std::vector<uint64_t>& perft_results)
+static void perft(Position& pos, int depth, std::vector<uint64_t>& perft_results)
 {
     if (depth == 0)
     {
@@ -19,22 +14,17 @@ static void perft(Position& p, int depth, std::vector<uint64_t>& perft_results)
         return;
     }
 
-    move_list pl_moves;
+    move_list pl_moves = pos.pseudo_legal_moves();
 
-    int n_moves = p.pseudo_legal_moves(pl_moves);
+    perft_results[depth - 1] += pl_moves.size();
 
-    // printf("SIZEOF RES %zu\n", perft_results.size());
-    // printf("DEPTH: %d\n", depth);
-    // exit(1);
-
-    perft_results[depth - 1] += n_moves;
-
-    for (int i = 0; i < n_moves; i++)
+    for (ChessMove move : pl_moves)
     {
-        if (p.try_make_move(pl_moves[i]))
+        if (pos.try_make_move(move))
         {
-            perft(p, depth - 1, perft_results);
-            p.unmake_last();
+
+            perft(pos, depth - 1, perft_results);
+            pos.unmake_last();
         }
         else
         {
@@ -64,22 +54,20 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
 {
     assert(depth >= 1);
 
-    move_list ml{};
-
-    int move_count = pos.pseudo_legal_moves(ml);
+    move_list ml = pos.pseudo_legal_moves();
 
     // nodes are only leaves (depth 0)
     int total_nodes = 0;
 
-    for (int i = 0; i < move_count; i++)
+    for (ChessMove move : ml)
     {
-        if (pos.try_make_move(ml[i]))
+        if (pos.try_make_move(move))
         {
             std::vector<uint64_t> perft_results(depth, 0);
 
             perft(pos, depth - 1, perft_results);
 
-            std::cout << ml[i] << ": " << perft_results.front();
+            std::cout << move << ": " << perft_results.front();
 
             if (print_fen)
                 std::cout << '\t' << pos.FEN();
