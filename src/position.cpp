@@ -5,6 +5,7 @@
 
 #include "bitboard.hpp"
 // #include "movegen.h"
+#include "chessmove.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
@@ -193,6 +194,20 @@ bool Position::is_check(COLOR c) const
     assert(kng_square >= 0 && kng_square < 64);
 
     return sq_attacked(kng_square, static_cast<COLOR>(!c));
+}
+
+// this is quite slow because we make and unmake all moves
+// TODO: we should cache the result of pseudo_legal_moves and legal_moves
+// TODO: check for insufficient material draw
+bool Position::is_game_over()
+{
+    // checkmate or stalemate or 50 move repition
+    if (rev_move_count() >= 100 || legal_moves().size() == 0)
+    {
+        return true;
+    }
+
+    return false;
 }
 
 void Position::make_move(const ChessMove c)
@@ -385,6 +400,11 @@ void Position::unmake_last(void)
         BB_SET(pos_bbs[ROOK], rook_orig);
         BB_SET(pos_bbs[stm], rook_orig);
     }
+}
+
+const ChessMove& Position::last_move() const
+{
+    return unmake_stack.back().move;
 }
 
 // try to make pseudo legal move.

@@ -40,6 +40,7 @@ class Position
 
     bool sq_attacked(square sq, COLOR attacking_color) const;
     bool is_check(COLOR c) const;
+    bool is_game_over();
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     move_list pseudo_legal_moves() const;
@@ -50,6 +51,8 @@ class Position
     bool try_make_move(const ChessMove c);
 
     void unmake_last();
+
+    const ChessMove& last_move() const;
 
     inline bitboard        pieces() const { return pos_bbs[WHITE] | pos_bbs[BLACK]; }
     inline const bitboard& pieces(int color_or_piece) const { return pos_bbs[color_or_piece]; }

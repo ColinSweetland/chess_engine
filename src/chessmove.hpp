@@ -114,4 +114,6 @@ struct rev_move_data
 
 using move_list = std::vector<ChessMove>;
 
+using scored_move = std::pair<ChessMove, int32_t>;
+
 #endif
