@@ -2,6 +2,7 @@
 #define MOVEGEN_INCL
 
 #include "bitboard.hpp"
+#include "chessmove.hpp"
 #include "types.hpp"
 
 //--------------MOVES-------------------

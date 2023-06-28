@@ -2,6 +2,7 @@
 #define GAMESTATE_INCL
 
 #include "bitboard.hpp"
+#include "chessmove.hpp"
 #include "types.hpp"
 
 #include <array>

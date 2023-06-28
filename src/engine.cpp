@@ -2,10 +2,65 @@
 #include <random>
 #include <sstream>
 
+#include "bitboard.hpp"
+#include "chessmove.hpp"
 #include "engine.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
+
+// Create a chessmove on pos with a string representing a move (in format UCI uses)
+static ChessMove UCI_move(Position pos, str move_string)
+{
+    const int origin_file = move_string[0] - 'a' + 1;
+    const int origin_rank = move_string[1] - '1' + 1;
+    const int dest_file   = move_string[2] - 'a' + 1;
+    const int dest_rank   = move_string[3] - '1' + 1;
+
+    const int promo_rank = PAWN_PROMO_RANK(pos.side_to_move());
+
+    const square origin = rankfile_to_sq(origin_rank, origin_file);
+    assert(origin >= 0 && origin <= 63);
+    const square dest = rankfile_to_sq(dest_rank, dest_file);
+    assert(dest >= 0 && dest <= 63);
+
+    const PIECE moved_p = pos.piece_at_sq(origin);
+
+    PIECE capture_p = pos.piece_at_sq(dest);
+
+    PIECE promo_p = NO_PIECE;
+
+    // pawn special info
+    if (moved_p == PAWN)
+    {
+        // En passante capture
+        if (dest_file != origin_file && capture_p == NO_PIECE)
+            capture_p = EN_PASSANTE;
+
+        // double push
+        else if (dest == origin + PAWN_PUSH_DIR(pos.side_to_move()) * 2)
+            return {origin, dest, ChessMove::flags::DOUBLE_PUSH};
+
+        // promo
+        else if (dest_rank == promo_rank)
+            promo_p = char_to_piece.at(move_string[4]);
+    }
+    else if (moved_p == KING)
+    {
+        // check if castle
+        if (origin_file == 5 /*e*/)
+        {
+            // If the king ever moves 2 files, it's a castle move
+            if (dest_file == 3 /*c*/)
+                return {origin, dest, ChessMove::flags::QUEENSIDE_CASTLE};
+
+            else if (dest_file == 7 /*g*/)
+                return {origin, dest, ChessMove::flags::KINGSIDE_CASTLE};
+        }
+    }
+
+    return {origin, dest, ChessMove::makeflag(capture_p, promo_p)};
+}
 
 static void perft(Position& pos, int depth, std::vector<uint64_t>& perft_results)
 {
@@ -121,6 +176,11 @@ void Engine::uci_loop()
         // get one line (command) and store it into input buf
         // then make a stream 'line' with the input buf
         getline(std::cin, input_buf);
+
+        // do nothing if nothing was read
+        if (input_buf.empty())
+            continue;
+
         std::istringstream line{input_buf};
 
         // collect tokens from the line into vector cmd_tokens
@@ -160,25 +220,26 @@ void Engine::uci_loop()
         }
         else if (cmd_tokens[0] == "position")
         {
-            // position            -> set current position
-            // second arg fen      -> set position to fen
-            // second arg startpos -> set to startpos
+            // position -> set current position
+
+            size_t i = 3;
+
             if (cmd_tokens[1] == "fen")
             {
                 str fen;
 
                 // collect tokens until "moves" or out of tokens
-                for (size_t i = 2; i < cmd_tokens.size(); i++)
+                for (i = 2; i < cmd_tokens.size(); i++)
                 {
                     if (cmd_tokens[i] == "moves")
+                    {
+                        i++; // consume 'moves' token
                         break;
-
-                    // luckily our fen parser can handle space at the end
+                    }
+                    // our fen parser can handle space at the end
                     fen += cmd_tokens[i];
                     fen += ' ';
                 }
-
-                // TODO: Initialize with moves
 
                 pos = {fen};
             }
@@ -186,6 +247,15 @@ void Engine::uci_loop()
             {
                 // starter position
                 pos = {};
+            }
+            else
+                continue; // ignore invalid input
+
+            // make moves after "moves" token if we had one
+            for (; i < cmd_tokens.size(); i++)
+            {
+                ChessMove uci_m = UCI_move(pos, cmd_tokens[i]);
+                pos.make_move(uci_m);
             }
         }
         else if (cmd_tokens[0] == "ucinewgame")

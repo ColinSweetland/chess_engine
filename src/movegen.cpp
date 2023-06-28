@@ -4,6 +4,7 @@
 #include <x86intrin.h>
 
 #include "bitboard.hpp"
+#include "chessmove.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"

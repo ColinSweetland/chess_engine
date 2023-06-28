@@ -1,6 +1,7 @@
 #ifndef ENGINE_INCL
 #define ENGINE_INCL
 
+#include "chessmove.hpp"
 #include "position.hpp"
 #include "types.hpp"
 

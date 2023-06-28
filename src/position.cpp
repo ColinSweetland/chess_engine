@@ -116,7 +116,7 @@ void Position::dbg_print() const
     std::cout << "BLACK QUEENSIDE: " << ((castle_r & BQS) > 0) << "\n";
 
     std::cout << "\nEN PASSANTE TARGET: " << BB_LSB(pos_bbs[EN_PASSANTE]) << "\n";
-    std::cout << "TO MOVE: " << stm << "\n";
+    std::cout << "TO MOVE: " << piece_to_char.at(stm) << "\n";
     std::cout << "FULL MOVE COUNTER: " << full_moves << "\n";
     std::cout << "REVERSIBLE MOVE COUNTER: " << rev_moves << "\n";
 }
