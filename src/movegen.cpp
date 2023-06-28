@@ -309,6 +309,23 @@ move_list Position::pseudo_legal_moves() const
     return pl_moves;
 }
 
+move_list Position::legal_moves()
+{
+    move_list ml = pseudo_legal_moves();
+    move_list legal;
+
+    for (ChessMove m : ml)
+    {
+        if (try_make_move(m))
+        {
+            legal.push_back(m);
+            unmake_last();
+        }
+    }
+
+    return legal;
+}
+
 // Adapted from chessprogramming wiki
 // used for generating bishop and rook tables
 static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)

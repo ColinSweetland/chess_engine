@@ -44,6 +44,8 @@ class Position
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     move_list pseudo_legal_moves() const;
 
+    move_list legal_moves();
+
     void make_move(const ChessMove c);
     bool try_make_move(const ChessMove c);
 

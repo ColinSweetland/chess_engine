@@ -136,19 +136,15 @@ PIECE Position::piece_at_sq(square sq) const
 
 bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
-    assert(sq >= 0 && sq < 64);
+    assert(valid_sq(sq));
     // opposite of how att pawns move
-    int      pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
-    bitboard enemy_pawns  = pieces(attacking_color, PAWN);
+    int pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
 
-    // enemy pawn attack from east side
-    bitboard potential_pawn_att_sqs = BB_SQ(sq + pawn_att_dir + EAST) & ~BB_FILE_A;
-
-    // from west
-    potential_pawn_att_sqs |= BB_SQ(sq + pawn_att_dir + WEST) & ~BB_FILE_H;
+    bitboard potential_pawn_atts = GEN_SHIFT(BB_SQ(sq), static_cast<DIR>(pawn_att_dir + EAST)) & ~BB_FILE_A;
+    potential_pawn_atts |= GEN_SHIFT(BB_SQ(sq), static_cast<DIR>(pawn_att_dir + WEST)) & ~BB_FILE_H;
 
     // check for pawn attackers
-    if (potential_pawn_att_sqs & enemy_pawns)
+    if (potential_pawn_atts & pieces(attacking_color, PAWN))
     {
         return true;
     }
@@ -397,7 +393,6 @@ void Position::unmake_last(void)
 bool Position::try_make_move(const ChessMove pseudo_legal)
 {
     make_move(pseudo_legal);
-
     // if the side that moved is in check, it's illegal
     if (is_check(static_cast<COLOR>(!side_to_move())))
     {

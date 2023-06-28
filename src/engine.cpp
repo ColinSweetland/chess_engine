@@ -70,6 +70,8 @@ static void perft(Position& pos, int depth, std::vector<uint64_t>& perft_results
         return;
     }
 
+    // we won't use legal_moves here because we end up
+    // wasting a unmake
     move_list pl_moves = pos.pseudo_legal_moves();
 
     perft_results[depth - 1] += pl_moves.size();
@@ -144,18 +146,7 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
 
 ChessMove Engine::best_move(Position pos)
 {
-    move_list ml = pos.pseudo_legal_moves();
-    move_list legal;
-
-    for (auto m : ml)
-    {
-        if (pos.try_make_move(m))
-        {
-            legal.push_back(m);
-            pos.unmake_last();
-        }
-    }
-
+    move_list legal = pos.legal_moves();
     return legal[std::rand() % legal.size()];
 }
 
