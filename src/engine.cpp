@@ -1,11 +1,9 @@
 #include <array>
 #include <cassert>
-#include <cstddef>
+#include <chrono>
 #include <cstdint>
-#include <cstdlib>
-#include <random>
+#include <iomanip>
 #include <sstream>
-#include <utility>
 
 #include "bitboard.hpp"
 #include "chessmove.hpp"
@@ -13,6 +11,7 @@
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
+#include "util.hpp"
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)
 static ChessMove UCI_move(Position pos, str move_string)
@@ -103,19 +102,34 @@ void Engine::perft_report(Position& pos, int depth)
 
     std::vector<uint64_t> perft_results(depth + 1, 0);
 
+    const auto start = std::chrono::steady_clock::now();
+
     perft(pos, depth, perft_results);
 
-    printf("DEPTH | NODES \n------------------\n");
+    const auto end = std::chrono::steady_clock::now();
+
+    const std::chrono::duration<double> elapsed_sec = end - start;
+
+    std::cout << "\nDEPTH | NODES \n------------------\n";
+
+    std::cout << std::left;
     for (int i = depth; i >= 0; i--)
     {
-        printf("%-6d| %-15lu\n", depth - i, perft_results.at(i));
+        std::cout << std::setw(6) << depth - i << "| " << pretty_int(perft_results.at(i)) << '\n';
     }
-    printf("\n");
+    // restore default
+    std::cout << std::right;
+
+    const std::uint64_t nps = perft_results.front() / elapsed_sec.count();
+
+    std::cout << "\nTime elapsed: " << elapsed_sec.count() << "s\t(" << pretty_int(nps) << " Nodes/sec)\n\n";
 }
 
 void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
 {
     assert(depth >= 1);
+
+    const auto start = std::chrono::steady_clock::now();
 
     move_list ml = pos.pseudo_legal_moves();
 
@@ -143,7 +157,15 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
         }
     }
 
-    std::cout << "\nNodes searched: " << total_nodes << '\n';
+    const auto end = std::chrono::steady_clock::now();
+
+    const std::chrono::duration<double> elapsed_sec = end - start;
+
+    const std::uint64_t nps = total_nodes / elapsed_sec.count();
+
+    std::cout << "\nNodes searched: " << pretty_int(total_nodes) << '\n';
+    std::cout << "Time elapsed: " << elapsed_sec.count() << "s "
+              << "(" << pretty_int(nps) << " Nodes/sec)\n";
 }
 
 int32_t Engine::evaluate(Position pos)
