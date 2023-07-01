@@ -1,6 +1,8 @@
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <random>
 #include <sstream>
 #include <utility>
@@ -169,7 +171,7 @@ int32_t Engine::evaluate(Position pos)
 }
 
 // Alpha beta search
-static scored_move alpha_beta_search(Position pos, int8_t depth, int32_t alpha = INT32_MIN, int32_t beta = INT32_MAX,
+static scored_move alpha_beta_search(Position pos, uint8_t depth, int32_t alpha = INT32_MIN, int32_t beta = INT32_MAX,
                                      bool max = true)
 {
     if (depth == 0 || pos.is_game_over())
@@ -244,7 +246,7 @@ static scored_move alpha_beta_search(Position pos, int8_t depth, int32_t alpha =
 
 // Find the best move in a position
 
-ChessMove Engine::best_move(Position pos)
+ChessMove Engine::best_move(Position pos, uint8_t depth)
 {
     /*
     move_list legal = pos.legal_moves();
@@ -256,10 +258,11 @@ ChessMove Engine::best_move(Position pos)
 
     return captures.size() == 0 ? legal[std::rand() % legal.size()] : captures[std::rand() % captures.size()];
     */
-    return alpha_beta_search(pos, 5).first;
+    return alpha_beta_search(pos, depth).first;
 }
 
-const size_t MAX_UCI_INPUT_SIZE = 1024;
+const size_t  MAX_UCI_INPUT_SIZE   = 1024;
+const uint8_t DEFAULT_SEARCH_DEPTH = 4;
 
 void Engine::uci_loop()
 {
@@ -276,22 +279,18 @@ void Engine::uci_loop()
         // get one line (command) and store it into input buf
         // then make a stream 'line' with the input buf
         getline(std::cin, input_buf);
-
-        // do nothing if nothing was read
-        if (input_buf.empty())
-            continue;
-
         std::istringstream line{input_buf};
 
         // collect tokens from the line into vector cmd_tokens
         cmd_tokens.clear();
         while (line >> token)
-        {
             cmd_tokens.push_back(token);
-        }
+
+        // if no tokens were read, do nothing
+        if (cmd_tokens.size() == 0)
+            continue;
 
         // parse the commands
-
         if (cmd_tokens[0] == "uci")
         {
             // uci command -> identify engine with id
@@ -318,16 +317,16 @@ void Engine::uci_loop()
             // setoption name <id> value <x> -> set an engine option (we have none right now)
             std::cout << "info string options not implemented\n";
         }
-        else if (cmd_tokens[0] == "position")
+        else if (cmd_tokens[0] == "position" && cmd_tokens.size() >= 2)
         {
             // position -> set current position
 
             size_t i = 3;
 
-            if (cmd_tokens[1] == "fen")
+            // fen strings should have 6 tokens -> position fen (6 tokens) = 8
+            if (cmd_tokens[1] == "fen" && cmd_tokens.size() >= 8)
             {
                 str fen;
-
                 // collect tokens until "moves" or out of tokens
                 for (i = 2; i < cmd_tokens.size(); i++)
                 {
@@ -344,14 +343,11 @@ void Engine::uci_loop()
                 pos = {fen};
             }
             else if (cmd_tokens[1] == "startpos")
-            {
-                // starter position
                 pos = {};
-            }
             else
                 continue; // ignore invalid input
 
-            // make moves after "moves" token if we had one
+            // make moves after "moves" token if we have one
             for (; i < cmd_tokens.size(); i++)
             {
                 ChessMove uci_m = UCI_move(pos, cmd_tokens[i]);
@@ -369,7 +365,13 @@ void Engine::uci_loop()
             // go -> many different commands depending on subcommands
             //    -> mainly search for next best move
 
-            std::cout << "bestmove " << best_move(pos) << '\n';
+            uint8_t depth = DEFAULT_SEARCH_DEPTH;
+
+            for (size_t i = 0; i < cmd_tokens.size() - 1; i++)
+                if (cmd_tokens[i] == "depth")
+                    depth = std::stoi(cmd_tokens[++i]);
+
+            std::cout << "bestmove " << best_move(pos, depth) << '\n';
         }
         //*******CUSTOM COMMANDS*********
         else if (cmd_tokens[0] == "printpos")

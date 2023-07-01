@@ -8,7 +8,7 @@
 namespace Engine
 {
 
-ChessMove best_move(Position pos);
+ChessMove best_move(Position pos, uint8_t depth);
 
 int32_t evaluate(Position pos);
 
