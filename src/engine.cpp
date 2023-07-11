@@ -66,7 +66,7 @@ static ChessMove UCI_move(Position pos, str move_string)
     return {origin, dest, ChessMove::makeflag(capture_p, promo_p)};
 }
 
-static void perft(Position& pos, int depth, std::vector<uint64_t>& perft_results)
+static void perft(Position& pos, int depth, std::vector<std::uint64_t>& perft_results)
 {
     if (depth == 0)
     {
@@ -100,7 +100,7 @@ void Engine::perft_report(Position& pos, int depth)
 {
     assert(depth >= 0);
 
-    std::vector<uint64_t> perft_results(depth + 1, 0);
+    std::vector<std::uint64_t> perft_results(depth + 1, 0);
 
     const auto start = std::chrono::steady_clock::now();
 
@@ -115,14 +115,14 @@ void Engine::perft_report(Position& pos, int depth)
     std::cout << std::left;
     for (int i = depth; i >= 0; i--)
     {
-        std::cout << std::setw(6) << depth - i << "| " << pretty_int(perft_results.at(i)) << '\n';
+        std::cout << std::setw(6) << depth - i << "| " << util::pretty_int(perft_results.at(i)) << '\n';
     }
     // restore default
     std::cout << std::right;
 
     const std::uint64_t nps = perft_results.front() / elapsed_sec.count();
 
-    std::cout << "\nTime elapsed: " << elapsed_sec.count() << "s\t(" << pretty_int(nps) << " Nodes/sec)\n\n";
+    std::cout << "\nTime elapsed: " << elapsed_sec.count() << "s\t(" << util::pretty_int(nps) << " Nodes/sec)\n\n";
 }
 
 void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
@@ -134,7 +134,7 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
     move_list ml = pos.pseudo_legal_moves();
 
     // nodes are only leaves (depth 0)
-    int total_nodes = 0;
+    std::uint64_t total_nodes = 0;
 
     for (ChessMove move : ml)
     {
@@ -163,9 +163,9 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
 
     const std::uint64_t nps = total_nodes / elapsed_sec.count();
 
-    std::cout << "\nNodes searched: " << pretty_int(total_nodes) << '\n';
+    std::cout << "\nNodes searched: " << util::pretty_int(total_nodes) << '\n';
     std::cout << "Time elapsed: " << elapsed_sec.count() << "s "
-              << "(" << pretty_int(nps) << " Nodes/sec)\n";
+              << "(" << util::pretty_int(nps) << " Nodes/sec)\n";
 }
 
 int32_t Engine::evaluate(Position pos)
