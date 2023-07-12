@@ -125,7 +125,7 @@ void Engine::perft_report(Position& pos, int depth)
     std::cout << "\nTime elapsed: " << elapsed_sec.count() << "s\t(" << util::pretty_int(nps) << " Nodes/sec)\n\n";
 }
 
-void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
+void Engine::perft_report_divided(Position& pos, int depth)
 {
     assert(depth >= 1);
 
@@ -145,9 +145,6 @@ void Engine::perft_report_divided(Position& pos, int depth, bool print_fen)
             perft(pos, depth - 1, perft_results);
 
             std::cout << move << ": " << perft_results.front();
-
-            if (print_fen)
-                std::cout << '\t' << pos.FEN();
 
             std::cout << '\n';
 
