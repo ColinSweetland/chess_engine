@@ -79,9 +79,13 @@ $(OBJ_DIR)/%$(EXE_POSTFIX).o: $(SRC_DIR)/%.cpp
 clean:
 	rm -rf $(OBJ_DIR) $(OUT_DIR)
 
-.PHONY: clean all run
+runtests:
+	./tests/perft_compare.sh
 
-.SILENT: run
+
+.PHONY: clean all run runtests
+
+.SILENT: run runtests
 
 
 

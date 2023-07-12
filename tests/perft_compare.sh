@@ -19,7 +19,7 @@ error=0
 
 while read fen; do
 
-    diff --label="${fen}"\
+    diff --color=always -u0 --label="ENGINE" --label="Stockfish"\
     <(printf "position fen ${fen}\nperftdiv ${depth}\nquit" | ./${engine_exe} | grep -P ${move_pat} | sort) \
     <(printf "position fen ${fen}\ngo perft ${depth}\nquit" | ./${stockf_exe} | grep -P ${move_pat} | sort) > tmp.txt
 
@@ -27,13 +27,11 @@ while read fen; do
     then
         error=1
         echo "!!!FAILED TEST!!! FEN: ${fen}"
-        sed -n -e "s/^< \([[:alnum:]]\{1,\}\): \([[:digit:]]\{1,\}\)/\nAfter Move \1 got \2 moves/p" \
-               -e "s/^> \([[:alnum:]]\{1,\}\): \([[:digit:]]\{1,\}\)/expected \2 moves/p" tmp.txt
+        cat tmp.txt
 
-        # echo "Engine said: $(grep -P "")"
         break;
     else
-        echo "**PASSED TEST*** FEN: ${fen} "
+        echo "***PASSED TEST*** FEN: ${fen} "
     fi
 
 done < fens.txt
