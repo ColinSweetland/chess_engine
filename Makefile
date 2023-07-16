@@ -27,7 +27,7 @@ CFLAGS	+= -flto
 CFLAGS	+= -march=native
 
 # add postfix to output
-EXE_POSTFIX += -release
+EXE_POSTFIX += _release
 
 else # not optimized ('debug mode') 
 # least optimization
@@ -37,7 +37,7 @@ CFLAGS 	+= -g3
 # sanitizers
 CFLAGS	+= -fsanitize=undefined,address
 
-EXE_POSTFIX += -debug
+EXE_POSTFIX += _debug
 endif
 
 SRC_DIR	:= src
@@ -56,7 +56,7 @@ DEPS = $(OBJECTS:.o=.d)
 -include $(DEPS)
 
 # Compile the program
-all: $(OUT_EXE) 
+all: $(OUT_EXE)
 
 # Run the program
 run: $(OUT_EXE)
@@ -79,8 +79,9 @@ $(OBJ_DIR)/%$(EXE_POSTFIX).o: $(SRC_DIR)/%.cpp
 clean:
 	rm -rf $(OBJ_DIR) $(OUT_DIR)
 
-runtests:
-	./tests/perft_compare.sh
+runtests: all
+	echo
+	./tests/run_tests.sh '$(shell readlink -f $(OUT_EXE))'
 
 
 .PHONY: clean all run runtests
