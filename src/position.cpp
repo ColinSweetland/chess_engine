@@ -80,48 +80,6 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
     return out;
 }
 
-// prints the gamestate in an extremely verbose way, for debugging only
-void Position::dbg_print() const
-{
-    std::cout << "\n*** PAWNS ***\n";
-    print_bitboard(PAWN);
-
-    std::cout << "\n*** KNIGHT ***\n";
-    print_bitboard(KNIGHT);
-
-    std::cout << "\n*** BISHOP ***\n";
-    print_bitboard(BISHOP);
-
-    std::cout << "\n*** ROOK ***\n";
-    print_bitboard(ROOK);
-
-    std::cout << "\n*** QUEEN ***\n";
-    print_bitboard(QUEEN);
-
-    std::cout << "\n*** KING ***\n";
-    print_bitboard(KING);
-
-    std::cout << "\n*** EN PASSANTE ***\n";
-    print_bitboard(EN_PASSANTE);
-
-    std::cout << "\n*** WHITE ***\n";
-    print_bitboard(WHITE);
-
-    std::cout << "\n*** BLACK ***\n";
-    print_bitboard(BLACK);
-
-    std::cout << "*CASTLE RIGHTS*\n";
-    std::cout << "WHITE KINGSIDE: " << ((castle_r & WKS) > 0) << "\n";
-    std::cout << "WHITE QUEENSIDE: " << ((castle_r & WQS) > 0) << "\n";
-    std::cout << "BLACK KINGSIDE: " << ((castle_r & BKS) > 0) << "\n";
-    std::cout << "BLACK QUEENSIDE: " << ((castle_r & BQS) > 0) << "\n";
-
-    std::cout << "\nEN PASSANTE TARGET: " << BB_LSB(pos_bbs[EN_PASSANTE]) << "\n";
-    std::cout << "TO MOVE: " << piece_to_char.at(stm) << "\n";
-    std::cout << "FULL MOVE COUNTER: " << full_moves << "\n";
-    std::cout << "REVERSIBLE MOVE COUNTER: " << rev_moves << "\n";
-}
-
 PIECE Position::piece_at_sq(square sq) const
 {
     for (int p = PAWN; p <= KING; p++)

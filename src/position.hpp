@@ -61,10 +61,6 @@ class Position
 
     str FEN() const;
 
-    inline void print_bitboard(bitboard bb) const { print_bb(pos_bbs[bb]); }
-
-    void dbg_print() const;
-
     friend std::ostream& operator<<(std::ostream& out, const Position& p);
 };
 
