@@ -209,15 +209,22 @@ bool Position::is_check(COLOR c) const
 // this is quite slow because we make and unmake all moves
 // TODO: we should cache the result of pseudo_legal_moves and legal_moves
 // TODO: check for insufficient material draw
-bool Position::is_game_over()
+GAME_OVER Position::is_game_over()
 {
-    // checkmate or stalemate or 50 move repition
-    if (rev_move_count() >= 100 || legal_moves().size() == 0)
-    {
-        return true;
-    }
+    // 50 move repitition
+    if (rev_move_count() >= 100)
+        return GAME_OVER::FIFTY_MOVE_RULE;
 
-    return false;
+    // very slow way to detect this please fix
+    else if (legal_moves().size() == 0)
+    {
+        if (is_check(side_to_move()))
+            return GAME_OVER::CHECKMATE;
+
+        return GAME_OVER::STALEMATE;
+    }
+    else
+        return GAME_OVER::NOT_GAME_OVER;
 }
 
 void Position::make_move(const ChessMove c)

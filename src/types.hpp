@@ -76,4 +76,19 @@ enum CASTLE_RIGHT
     BCR = BQS | BKS
 };
 
+enum GAME_OVER
+{
+    NOT_GAME_OVER = 0,
+    CHECKMATE     = 1,
+
+    // below are all draws
+    STALEMATE       = 2,
+    FIFTY_MOVE_RULE = 3,
+
+    /* NOT IMPLEMENTED
+    REPITITION_DRAW = 4,
+    INSUFFICIENT_MAT = 5
+    */
+};
+
 #endif // TYPES_INCL

@@ -39,9 +39,9 @@ class Position
     PIECE piece_at_sq(square sq) const;
     COLOR color_at_sq(square sq) const;
 
-    bool sq_attacked(square sq, COLOR attacking_color) const;
-    bool is_check(COLOR c) const;
-    bool is_game_over();
+    bool      sq_attacked(square sq, COLOR attacking_color) const;
+    bool      is_check(COLOR c) const;
+    GAME_OVER is_game_over();
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     move_list pseudo_legal_moves() const;

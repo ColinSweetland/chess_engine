@@ -1,8 +1,11 @@
 #include "evaluate.hpp"
 #include "bitboard.hpp"
 #include "chessmove.hpp"
+#include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
+
+#include <cstdint>
 
 // Alpha beta search
 static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alpha = INT32_MIN,
@@ -10,7 +13,8 @@ static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alp
 {
     if (depth == 0 || pos.is_game_over())
     {
-        centipawn eval = Engine::evaluate(pos);
+        centipawn eval = Engine::evaluate(pos, depth);
+
         return std::make_pair(pos.last_move(), eval);
     }
     move_list ml = pos.pseudo_legal_moves();
@@ -88,11 +92,21 @@ static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alp
 // else checkmate or draw value if it is
 static centipawn game_over_eval(Position& pos)
 {
-    // checkmate or stalemate or 50 move repition
-    if (pos.is_game_over())
-        return Engine::CHECKMATE_EVAL[pos.side_to_move()];
+    switch (pos.is_game_over())
+    {
+    case NOT_GAME_OVER:
+        return 0;
+        break;
 
-    return 0;
+    case FIFTY_MOVE_RULE:
+    case STALEMATE:
+        return Engine::DRAW_EVAL;
+        break;
+
+    case CHECKMATE:
+        return Engine::CHECKMATE_EVAL(pos.side_to_move());
+        break;
+    }
 }
 
 static centipawn piece_value_eval(Position& pos)
@@ -215,18 +229,21 @@ centipawn piece_sq_table_eval(Position& pos)
 
 ChessMove Engine::best_move(Position& pos, uint8_t depth) { return alpha_beta_search(pos, depth).first; }
 
-centipawn Engine::evaluate(Position& pos)
+centipawn Engine::evaluate(Position& pos, uint8_t depth)
 {
     centipawn eval = game_over_eval(pos);
 
-    if (eval != 0)
-        return eval; // game is over, no need to evaluate further
+    // not mate
+    if (eval == 0)
+    {
+        eval += piece_value_eval(pos);
 
-    eval += piece_value_eval(pos);
+        eval += piece_sq_table_eval(pos);
+    }
 
-    centipawn psqt_e = piece_sq_table_eval(pos);
-    eval += psqt_e;
+    // tempo bonus means reaching a position with equivalent
+    // evaluation one move earlier is equivalent to +5 centipawn
+    centipawn tempo_bonus = EVAL_SIGN(pos.side_to_move()) * depth * 5;
 
-    return eval;
+    return eval + tempo_bonus;
 }
-
