@@ -19,7 +19,8 @@ then
 fi
 
 ./perft_compare_test.sh "${1}" &&
-./fen_serialization_test.sh "${1}"
+./fen_serialization_test.sh "${1}" &&
+./best_move_tests.sh "${1}"
 
 exit 0
 

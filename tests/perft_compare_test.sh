@@ -35,7 +35,7 @@ fi
 
 
 # pattern for isolating the lines with chessmoves in engine output 
-move_pat="[a-h][1-8][a-h][1-8]:"
+move_pat="[a-h][1-8][a-h][1-8][bnrqk]*:"
 
 # depth to search
 depth=4
