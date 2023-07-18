@@ -135,6 +135,16 @@ PIECE Position::piece_at_sq(square sq) const
     return NO_PIECE;
 }
 
+COLOR Position::color_at_sq(square sq) const
+{
+    if (BB_IS_SET_AT(pieces(WHITE), sq))
+        return WHITE;
+    else if (BB_IS_SET_AT(pieces(BLACK), sq))
+        return BLACK;
+    else
+        return NO_COLOR;
+}
+
 bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
     assert(valid_sq(sq));
@@ -402,10 +412,7 @@ void Position::unmake_last(void)
     }
 }
 
-const ChessMove& Position::last_move() const
-{
-    return unmake_stack.back().move;
-}
+const ChessMove& Position::last_move() const { return unmake_stack.back().move; }
 
 // try to make pseudo legal move.
 // If move is legal, make the move and return true.

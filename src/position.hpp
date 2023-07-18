@@ -37,6 +37,7 @@ class Position
     inline const unsigned int& castle_rights() const { return castle_r; }
 
     PIECE piece_at_sq(square sq) const;
+    COLOR color_at_sq(square sq) const;
 
     bool sq_attacked(square sq, COLOR attacking_color) const;
     bool is_check(COLOR c) const;

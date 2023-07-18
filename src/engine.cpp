@@ -5,9 +5,9 @@
 #include <iomanip>
 #include <sstream>
 
-#include "bitboard.hpp"
 #include "chessmove.hpp"
 #include "engine.hpp"
+#include "evaluate.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types.hpp"
@@ -165,121 +165,6 @@ void Engine::perft_report_divided(Position& pos, int depth)
               << "(" << util::pretty_int(nps) << " Nodes/sec)\n";
 }
 
-int32_t Engine::evaluate(Position pos)
-{
-    static std::array<int, KING + 1> piece_to_cp_score{0, 0, 100 /*P*/, 300 /*N*/, 300 /*B*/, 500 /*R*/, 900 /*Q*/};
-
-    int32_t score = 0;
-
-    COLOR enemy = static_cast<COLOR>(!pos.side_to_move());
-
-    if (pos.is_game_over())
-    {
-        return INT32_MIN + 1;
-    }
-
-    for (int p = PAWN; p < KING; p++)
-    {
-        // friendly piece score
-        score += piece_to_cp_score[p] * BB_POPCNT(pos.pieces(pos.side_to_move(), static_cast<PIECE>(p)));
-        // enemy piece score
-        score -= piece_to_cp_score[p] * BB_POPCNT(pos.pieces(enemy, static_cast<PIECE>(p)));
-    }
-
-    return score;
-}
-
-// Alpha beta search
-static scored_move alpha_beta_search(Position pos, uint8_t depth, int32_t alpha = INT32_MIN, int32_t beta = INT32_MAX,
-                                     bool max = true)
-{
-    if (depth == 0 || pos.is_game_over())
-    {
-        int32_t eval = max ? Engine::evaluate(pos) : -Engine::evaluate(pos);
-        return std::make_pair(pos.last_move(), eval);
-    }
-    move_list ml = pos.pseudo_legal_moves();
-
-    // maximizing player
-    if (max)
-    {
-        int32_t   max_eval = INT32_MIN;
-        ChessMove max_eval_move;
-
-        for (ChessMove move : ml)
-        {
-            // skip illegal moves
-            if (!pos.try_make_move(move))
-                continue;
-
-            scored_move scored = alpha_beta_search(pos, depth - 1, alpha, beta, false);
-
-            // we found a new best move
-            if (scored.second > max_eval)
-            {
-                max_eval_move = move;
-                max_eval      = scored.second;
-            }
-
-            alpha = std::max(alpha, scored.second);
-
-            // cause cutoff, opponent would never make this move
-            if (beta <= alpha)
-                break;
-            // unmake move from start of loop
-            pos.unmake_last();
-        }
-
-        return std::make_pair(max_eval_move, max_eval);
-    }
-    // minimizing player, see comments above
-    else
-    {
-        int32_t   min_eval = INT32_MAX;
-        ChessMove min_eval_move;
-
-        for (ChessMove move : ml)
-        {
-            if (!pos.try_make_move(move))
-                continue;
-
-            scored_move scored = alpha_beta_search(pos, depth - 1, alpha, beta, true);
-
-            if (scored.second < min_eval)
-            {
-                min_eval_move = move;
-                min_eval      = scored.second;
-            }
-
-            beta = std::min(beta, scored.second);
-
-            if (beta <= alpha)
-                break;
-
-            pos.unmake_last();
-        }
-
-        return std::make_pair(min_eval_move, min_eval);
-    }
-}
-
-// Find the best move in a position
-
-ChessMove Engine::best_move(Position pos, uint8_t depth)
-{
-    /*
-    move_list legal = pos.legal_moves();
-    move_list captures;
-
-    for (ChessMove m : legal)
-        if (m.is_capture())
-            captures.push_back(m);
-
-    return captures.size() == 0 ? legal[std::rand() % legal.size()] : captures[std::rand() % captures.size()];
-    */
-    return alpha_beta_search(pos, depth).first;
-}
-
 const size_t  MAX_UCI_INPUT_SIZE   = 1024;
 const uint8_t DEFAULT_SEARCH_DEPTH = 4;
 
@@ -398,6 +283,8 @@ void Engine::uci_loop()
 
         else if (cmd_tokens[0] == "printfen")
             std::cout << pos.FEN() << '\n';
+        else if (cmd_tokens[0] == "printeval")
+            std::cout << "EVAL: " << evaluate(pos) << '\n';
 
         else if (cmd_tokens[0] == "perft")
         {

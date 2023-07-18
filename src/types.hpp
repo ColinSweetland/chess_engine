@@ -20,8 +20,9 @@ inline bool valid_sq(square sq) { return sq >= 0 && sq <= 63; }
 
 enum COLOR
 {
-    WHITE,
-    BLACK
+    NO_COLOR = -1,
+    WHITE    = 0,
+    BLACK    = 1
 };
 
 // direction on the board, from white's point of view

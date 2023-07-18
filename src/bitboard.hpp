@@ -41,6 +41,12 @@ constexpr int FILE_FROM_SQ(square sq) { return (sq % 8) + 1; }
 constexpr char RANK_CHAR_FROM_SQ(square sq) { return static_cast<char>(RANK_FROM_SQ(sq) + '1' - 1); }
 constexpr char FILE_CHAR_FROM_SQ(square sq) { return static_cast<char>(FILE_FROM_SQ(sq) + 'a' - 1); }
 
+constexpr square MIRROR_VERT_SQ(square sq)
+{
+    assert(sq >= 0 && sq <= 63);
+    return sq ^ 56;
+}
+
 //**** GCC BUILTINS ********
 // these can be replaced later if needed
 constexpr square BB_LSB(const bitboard& b) { return __builtin_ffsll(b) - 1; }

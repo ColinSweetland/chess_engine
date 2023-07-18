@@ -8,10 +8,6 @@
 namespace Engine
 {
 
-ChessMove best_move(Position pos, uint8_t depth);
-
-int32_t evaluate(Position pos);
-
 void uci_loop();
 
 void perft_report(Position& pos, int depth);
