@@ -11,7 +11,7 @@ using centipawn = int32_t;
 namespace Engine
 {
 
-const centipawn CHECKMATE_EVAL[2] = {INT32_MIN, INT32_MAX};
+const centipawn CHECKMATE_EVAL[2] = {INT32_MIN + 1, INT32_MAX - 1};
 
 centipawn evaluate(Position& pos);
 
