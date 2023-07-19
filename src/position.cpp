@@ -31,7 +31,7 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
             piece_char = piece_to_char.at(p.piece_at_sq(sq));
 
             // if piece is white -> capital letter
-            if (BB_IS_SET_AT(p.pos_bbs[WHITE], sq))
+            if (p.color_at_sq(sq) == WHITE)
                 piece_char = std::toupper(piece_char);
 
             out << ' ' << piece_char << ' ';
@@ -62,14 +62,14 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
             out << "\tEn Passante Sq: ";
 
             if (enp_sq != -1)
-                out << FILE_CHAR_FROM_SQ(enp_sq) << RANK_CHAR_FROM_SQ(enp_sq);
+                out << SQ_TO_STR(enp_sq);
             else
                 out << '-';
 
             break;
 
         case (1):
-            out << "\t" << (p.side_to_move() ? "Black" : "White") << " to move";
+            out << "\t" << (piece_to_str.at(p.side_to_move())) << " to move";
             break;
         }
     }
@@ -129,7 +129,7 @@ COLOR Position::color_at_sq(square sq) const
 
 bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
-    assert(valid_sq(sq));
+    assert(VALID_SQ(sq));
     // opposite of how att pawns move
     int pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
 

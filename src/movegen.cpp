@@ -13,23 +13,6 @@
 static constexpr bitboard e_mask = ~BB_FILE_A;
 static constexpr bitboard w_mask = ~BB_FILE_H;
 
-// ---------------- MOVES ---------------------------
-
-std::ostream& operator<<(std::ostream& out, const ChessMove& m)
-{
-    square orig = m.get_origin_sq();
-    square dest = m.get_dest_sq();
-
-    out << FILE_CHAR_FROM_SQ(orig) << RANK_CHAR_FROM_SQ(orig);
-
-    out << FILE_CHAR_FROM_SQ(dest) << RANK_CHAR_FROM_SQ(dest);
-
-    if (m.is_promo())
-        out << piece_to_char.at(m.get_promo_piece());
-
-    return out;
-}
-
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
 move_list Position::pseudo_legal_moves() const
 {

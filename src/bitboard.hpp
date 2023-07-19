@@ -5,15 +5,17 @@
 
 #include <cassert>
 #include <immintrin.h>
-// empty: all zeroes
 
+inline bool VALID_SQ(square sq) { return sq >= 0 && sq <= 63; }
+
+// empty: all zeroes
 constexpr bitboard BB_ZERO = {0ULL};
 
 // bb at a certain square
 // maybe we could use a lookup table later
 constexpr bitboard BB_SQ(square sq)
 {
-    assert(sq >= 0 && sq <= 63);
+    assert(VALID_SQ(sq));
     return (1ULL << (sq));
 }
 
@@ -40,6 +42,8 @@ constexpr int FILE_FROM_SQ(square sq) { return (sq % 8) + 1; }
 // getting char versions of rank or file, for printing
 constexpr char RANK_CHAR_FROM_SQ(square sq) { return static_cast<char>(RANK_FROM_SQ(sq) + '1' - 1); }
 constexpr char FILE_CHAR_FROM_SQ(square sq) { return static_cast<char>(FILE_FROM_SQ(sq) + 'a' - 1); }
+
+inline str SQ_TO_STR(square sq) { return {FILE_CHAR_FROM_SQ(sq), RANK_CHAR_FROM_SQ(sq)}; }
 
 constexpr square MIRROR_VERT_SQ(square sq)
 {

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "bitboard.hpp"
 #include "types.hpp"
 
 // Move = 16 bits
@@ -72,8 +73,11 @@ class ChessMove
     inline bool is_double_push() const { return get_flags() == DOUBLE_PUSH; }
     inline bool is_en_passante() const { return get_flags() == EP_CAP; }
 
-    inline bool operator==(ChessMove a) const { return m_move == a.m_move; }
-    inline bool operator!=(ChessMove a) const { return m_move != a.m_move; }
+    inline str to_str() const
+    {
+        str temp = SQ_TO_STR(get_origin_sq()) + SQ_TO_STR(get_dest_sq());
+        return is_promo() ? temp + piece_to_char.at(get_promo_piece()) : temp;
+    }
 
     // helper - returns flag with capture/promo
     static constexpr ChessMove::flags makeflag(PIECE cap, PIECE pro)
@@ -101,6 +105,8 @@ class ChessMove
         return static_cast<ChessMove::flags>(f);
     }
 };
+
+inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return out << m.to_str(); }
 
 // contains all data needed to unmake a move
 struct rev_move_data

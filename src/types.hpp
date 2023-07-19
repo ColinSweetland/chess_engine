@@ -16,7 +16,6 @@ using bitboard = std::uint64_t;
 // 0-63 square on bitboard, from a1 to h8. -1 used for no square
 using square = std::int8_t;
 
-inline bool valid_sq(square sq) { return sq >= 0 && sq <= 63; }
 
 enum COLOR
 {
