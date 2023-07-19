@@ -290,18 +290,20 @@ void Position::make_move(const ChessMove c)
         // captures are not reversible
         rev_moves = 0;
     }
-    else if (c.get_flags() == ChessMove::KINGSIDE_CASTLE)
+    else if (c.is_castle())
     {
-        square rook_sq   = stm ? 63 : 7;
-        square rook_dest = dest_sq + WEST;
-
-        // we only have to move the rook, since we will move the king
-        move_piece(stm, ROOK, rook_sq, rook_dest);
-    }
-    else if (c.get_flags() == ChessMove::QUEENSIDE_CASTLE)
-    {
-        square rook_sq   = stm ? 56 : 0;
-        square rook_dest = dest_sq + EAST;
+        square rook_sq;
+        square rook_dest;
+        if (c.get_flags() == ChessMove::KINGSIDE_CASTLE)
+        {
+            rook_sq   = stm ? 63 : 7;
+            rook_dest = dest_sq + WEST;
+        }
+        else
+        {
+            rook_sq   = stm ? 56 : 0;
+            rook_dest = dest_sq + EAST;
+        }
 
         // we only have to move the rook, since we will move the king
         move_piece(stm, ROOK, rook_sq, rook_dest);
@@ -361,18 +363,21 @@ void Position::unmake_last(void)
         // restore captured piece
         place_piece(static_cast<COLOR>(!stm), rmd.captured_piece, cap_sq);
     }
-    else if (m.get_flags() == ChessMove::KINGSIDE_CASTLE)
+    else if (m.is_castle())
     {
-        square rook_orig = stm ? 63 : 7;
-        square rook_dest = dest_sq + WEST;
+        square rook_orig;
+        square rook_dest;
 
-        // restore rook to it's original square
-        move_piece(stm, ROOK, rook_dest, rook_orig);
-    }
-    else if (m.get_flags() == ChessMove::QUEENSIDE_CASTLE)
-    {
-        square rook_orig = stm ? 56 : 0;
-        square rook_dest = dest_sq + EAST;
+        if (m.get_flags() == ChessMove::KINGSIDE_CASTLE)
+        {
+            rook_orig = stm ? 63 : 7;
+            rook_dest = dest_sq + WEST;
+        }
+        else
+        {
+            rook_orig = stm ? 56 : 0;
+            rook_dest = dest_sq + EAST;
+        }
 
         // restore rook to it's original square
         move_piece(stm, ROOK, rook_dest, rook_orig);
