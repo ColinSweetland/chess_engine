@@ -25,6 +25,11 @@ class Position
 
     COLOR stm{WHITE};
 
+    // helpers
+    void remove_piece(COLOR c, PIECE p, square sq);
+    void place_piece(COLOR c, PIECE p, square sq);
+    void move_piece(COLOR c, PIECE p, square orig, square dest);
+
   public:
     // default to the starting position
     Position(str fenstr = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

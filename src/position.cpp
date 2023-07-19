@@ -80,6 +80,30 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
     return out;
 }
 
+void Position::remove_piece(COLOR c, PIECE p, square sq)
+{
+    assert(BB_IS_SET_AT(pos_bbs[c], sq));
+    assert(BB_IS_SET_AT(pos_bbs[p], sq));
+    assert(p != NO_PIECE);
+    BB_UNSET(pos_bbs[c], sq);
+    BB_UNSET(pos_bbs[p], sq);
+}
+
+void Position::place_piece(COLOR c, PIECE p, square sq)
+{
+    assert(!BB_IS_SET_AT(pos_bbs[c], sq));
+    assert(!BB_IS_SET_AT(pos_bbs[p], sq));
+    assert(p != NO_PIECE);
+    BB_SET(pos_bbs[c], sq);
+    BB_SET(pos_bbs[p], sq);
+}
+
+void Position::move_piece(COLOR c, PIECE p, square orig, square dest)
+{
+    remove_piece(c, p, orig);
+    place_piece(c, p, dest);
+}
+
 PIECE Position::piece_at_sq(square sq) const
 {
     for (int p = PAWN; p <= KING; p++)
@@ -261,8 +285,7 @@ void Position::make_move(const ChessMove c)
         }
 
         // remove the captured piece
-        BB_UNSET(pos_bbs[captured_piece], cap_square);
-        BB_UNSET(pos_bbs[!stm], cap_square);
+        remove_piece(static_cast<COLOR>(!stm), captured_piece, cap_square);
 
         // captures are not reversible
         rev_moves = 0;
@@ -273,11 +296,7 @@ void Position::make_move(const ChessMove c)
         square rook_dest = dest_sq + WEST;
 
         // we only have to move the rook, since we will move the king
-        BB_UNSET(pos_bbs[ROOK], rook_sq);
-        BB_UNSET(pos_bbs[stm], rook_sq);
-
-        BB_SET(pos_bbs[ROOK], rook_dest);
-        BB_SET(pos_bbs[stm], rook_dest);
+        move_piece(stm, ROOK, rook_sq, rook_dest);
     }
     else if (c.get_flags() == ChessMove::QUEENSIDE_CASTLE)
     {
@@ -285,19 +304,13 @@ void Position::make_move(const ChessMove c)
         square rook_dest = dest_sq + EAST;
 
         // we only have to move the rook, since we will move the king
-        BB_UNSET(pos_bbs[ROOK], rook_sq);
-        BB_UNSET(pos_bbs[stm], rook_sq);
-
-        BB_SET(pos_bbs[ROOK], rook_dest);
-        BB_SET(pos_bbs[stm], rook_dest);
+        move_piece(stm, ROOK, rook_sq, rook_dest);
     }
 
     // finally move the moved piece
-    BB_UNSET(pos_bbs[moved_piece], orig_sq);
-    BB_SET(pos_bbs[after_move_piece], dest_sq);
-
-    BB_UNSET(pos_bbs[stm], orig_sq);
-    BB_SET(pos_bbs[stm], dest_sq);
+    // can't use move_piece helper here because it can be a promotion
+    remove_piece(stm, moved_piece, orig_sq);
+    place_piece(stm, after_move_piece, dest_sq);
 
     // now it's the other side's turn
     stm = static_cast<COLOR>(!stm);
@@ -331,12 +344,10 @@ void Position::unmake_last(void)
     full_moves -= stm;
 
     // remove piece from dest sq
-    BB_UNSET(pos_bbs[stm], dest_sq);
-    BB_UNSET(pos_bbs[after_move_piece], dest_sq);
+    remove_piece(stm, after_move_piece, dest_sq);
 
     // restore piece to orig sq
-    BB_SET(pos_bbs[stm], orig_sq);
-    BB_SET(pos_bbs[orig_piece], orig_sq);
+    place_piece(stm, orig_piece, orig_sq);
 
     if (m.is_capture())
     {
@@ -348,8 +359,7 @@ void Position::unmake_last(void)
         }
 
         // restore captured piece
-        BB_SET(pos_bbs[!stm], cap_sq);
-        BB_SET(pos_bbs[rmd.captured_piece], cap_sq);
+        place_piece(static_cast<COLOR>(!stm), rmd.captured_piece, cap_sq);
     }
     else if (m.get_flags() == ChessMove::KINGSIDE_CASTLE)
     {
@@ -357,11 +367,7 @@ void Position::unmake_last(void)
         square rook_dest = dest_sq + WEST;
 
         // restore rook to it's original square
-        BB_UNSET(pos_bbs[ROOK], rook_dest);
-        BB_UNSET(pos_bbs[stm], rook_dest);
-
-        BB_SET(pos_bbs[ROOK], rook_orig);
-        BB_SET(pos_bbs[stm], rook_orig);
+        move_piece(stm, ROOK, rook_dest, rook_orig);
     }
     else if (m.get_flags() == ChessMove::QUEENSIDE_CASTLE)
     {
@@ -369,11 +375,7 @@ void Position::unmake_last(void)
         square rook_dest = dest_sq + EAST;
 
         // restore rook to it's original square
-        BB_UNSET(pos_bbs[ROOK], rook_dest);
-        BB_UNSET(pos_bbs[stm], rook_dest);
-
-        BB_SET(pos_bbs[ROOK], rook_orig);
-        BB_SET(pos_bbs[stm], rook_orig);
+        move_piece(stm, ROOK, rook_dest, rook_orig);
     }
 }
 
@@ -440,16 +442,18 @@ Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
         // a letter indicates a piece
         case 'A' ... 'Z':
         case 'a' ... 'z':
-
-            // set the piece color bitboard
-            // black is lowercase - we use ! trick because isupper/lower can return any truthy int - we always want 1
-            BB_SET(pos_bbs[!isupper(fc)], sq);
-
-            // set the piece type bitboard
             // if fc is not a real piece char -> throw error
             assert(char_to_piece.count(tolower(fc)));
 
-            BB_SET(pos_bbs[char_to_piece.at(tolower(fc))], sq);
+            {
+                // black is lowercase - we use ! because isupper/lower
+                // can return any truthy int - we always want 1
+                COLOR piece_color = static_cast<COLOR>(!isupper(fc));
+                PIECE piece_type  = char_to_piece.at(tolower(fc));
+
+                place_piece(piece_color, piece_type, sq);
+            }
+
             break;
 
         default:
@@ -562,7 +566,7 @@ str Position::FEN() const
             char piece_char = piece_to_char.at(sq_piece);
 
             // if piece is white, make uppercase
-            if (BB_IS_SET_AT(pieces(WHITE), sq))
+            if (color_at_sq(sq) == WHITE)
             {
                 piece_char = toupper(piece_char);
             }
