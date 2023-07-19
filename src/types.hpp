@@ -16,7 +16,6 @@ using bitboard = std::uint64_t;
 // 0-63 square on bitboard, from a1 to h8. -1 used for no square
 using square = std::int8_t;
 
-
 enum COLOR
 {
     NO_COLOR = -1,
@@ -65,14 +64,15 @@ const std::unordered_map<int, str> piece_to_str = {
 
 enum CASTLE_RIGHT
 {
-    NO_RIGHTS = 0,
-    WQS       = 1,
-    WKS       = 2,
-    BQS       = 4,
-    BKS       = 8,
+    CR_WQS = 1,
+    CR_WKS = 2,
+    CR_BQS = 4,
+    CR_BKS = 8,
 
-    WCR = WQS | WKS,
-    BCR = BQS | BKS
+    CR_WKQS = CR_WKS | CR_WQS,
+    CR_BKQS = CR_BKS | CR_BQS,
+
+    CR_ANY = CR_WQS | CR_WKS | CR_BQS | CR_BKS
 };
 
 enum GAME_OVER

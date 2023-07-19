@@ -30,6 +30,12 @@ class Position
     void place_piece(COLOR c, PIECE p, square sq);
     void move_piece(COLOR c, PIECE p, square orig, square dest);
 
+    bool has_cr(CASTLE_RIGHT cr) const { return castle_r & cr; }
+    void remove_cr(CASTLE_RIGHT cr) { castle_r &= ~cr; }
+    void give_cr(CASTLE_RIGHT cr) { castle_r |= cr; }
+
+    str castle_right_str() const;
+
   public:
     // default to the starting position
     Position(str fenstr = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -38,8 +44,6 @@ class Position
 
     inline const unsigned int& full_move_count() const { return full_moves; }
     inline const unsigned int& rev_move_count() const { return rev_moves; }
-
-    inline const unsigned int& castle_rights() const { return castle_r; }
 
     PIECE piece_at_sq(square sq) const;
     COLOR color_at_sq(square sq) const;

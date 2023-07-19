@@ -10,8 +10,27 @@
 #include "position.hpp"
 #include "types.hpp"
 
-// the << operator will print the position, nicely formatted
+// formats castlerights to string like 'KQkq' or 'Kkq' or '-'
+str Position::castle_right_str() const
+{
+    if (!has_cr(CR_ANY))
+        return "-";
 
+    str cr_str;
+
+    if (has_cr(CR_WKS))
+        cr_str.push_back('K');
+    if (has_cr(CR_WQS))
+        cr_str.push_back('Q');
+    if (has_cr(CR_BKS))
+        cr_str.push_back('k');
+    if (has_cr(CR_BQS))
+        cr_str.push_back('q');
+
+    return cr_str;
+};
+
+// the << operator will print the position, nicely formatted
 std::ostream& operator<<(std::ostream& out, const Position& p)
 {
     square sq;
@@ -45,17 +64,7 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
             break;
 
         case (5):
-            out << "\tCastling: ";
-            if (p.castle_rights() & WKS)
-                out << 'K';
-            if (p.castle_rights() & WQS)
-                out << 'Q';
-            if (p.castle_rights() & BKS)
-                out << 'k';
-            if (p.castle_rights() & BQS)
-                out << 'q';
-            if (p.castle_rights() == 0)
-                out << '-';
+            out << "\tCastling: " << p.castle_right_str();
             break;
 
         case (3):
@@ -130,6 +139,7 @@ COLOR Position::color_at_sq(square sq) const
 bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
     assert(VALID_SQ(sq));
+
     // opposite of how att pawns move
     int pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
 
@@ -183,7 +193,7 @@ bool Position::is_check(COLOR c) const
 {
     square kng_square = BB_LSB(pieces(c, KING));
 
-    assert(kng_square >= 0 && kng_square < 64);
+    assert(VALID_SQ(kng_square));
 
     return sq_attacked(kng_square, static_cast<COLOR>(!c));
 }
@@ -242,7 +252,7 @@ void Position::make_move(const ChessMove c)
 
     // moving king always unsets castle rights for moving side
     else if (moved_piece == KING)
-        castle_r &= (stm ? WCR : BCR);
+        remove_cr(stm ? CR_BKQS : CR_WKQS);
 
     // if we move rook from starting square, we must unset castle rights
     else if (moved_piece == ROOK)
@@ -251,10 +261,10 @@ void Position::make_move(const ChessMove c)
         square qs_rooksq = stm ? 56 : 0;
 
         if (orig_sq == ks_rooksq)
-            castle_r &= (stm ? ~BKS : ~WKS);
+            remove_cr(stm ? CR_BKS : CR_WKS);
 
         else if (orig_sq == qs_rooksq)
-            castle_r &= (stm ? ~BQS : ~WQS);
+            remove_cr(stm ? CR_BQS : CR_WQS);
     }
 
     // special moves section
@@ -278,10 +288,10 @@ void Position::make_move(const ChessMove c)
             square enemy_qs_rooksq = stm ? 0 : 56;
 
             if (dest_sq == enemy_ks_rooksq)
-                castle_r &= (stm ? ~WKS : ~BKS);
+                remove_cr(stm ? CR_WKS : CR_BKS);
 
             else if (dest_sq == enemy_qs_rooksq)
-                castle_r &= (stm ? ~WQS : ~BQS);
+                remove_cr(stm ? CR_WQS : CR_BQS);
         }
 
         // remove the captured piece
@@ -492,16 +502,16 @@ Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
             switch (fc)
             {
             case ('K'):
-                castle_r |= WKS;
+                give_cr(CR_WKS);
                 break;
             case ('Q'):
-                castle_r |= WQS;
+                give_cr(CR_WQS);
                 break;
             case ('k'):
-                castle_r |= BKS;
+                give_cr(CR_BKS);
                 break;
             case ('q'):
-                castle_r |= BQS;
+                give_cr(CR_BQS);
                 break;
             default:
                 assert(false);
@@ -608,29 +618,7 @@ str Position::FEN() const
     fen << ' ';
 
     // --- CASTLE RIGHTS ---
-    if (castle_r == NO_RIGHTS)
-    {
-        fen.put('-');
-    }
-    else
-    {
-        if (castle_r & WKS)
-        {
-            fen.put('K');
-        }
-        if (castle_r & WQS)
-        {
-            fen.put('Q');
-        }
-        if (castle_r & BKS)
-        {
-            fen.put('k');
-        }
-        if (castle_r & BQS)
-        {
-            fen.put('q');
-        }
-    }
+    fen << castle_right_str();
 
     // --- EN PASSANTE ---
 
@@ -645,10 +633,7 @@ str Position::FEN() const
     }
     else
     {
-        // FILE
-        fen.put(FILE_CHAR_FROM_SQ(enp_sq));
-        // RANK
-        fen.put(RANK_CHAR_FROM_SQ(enp_sq));
+        fen << SQ_TO_STR(enp_sq);
     }
 
     // --- HALF/REVERSIBLE MOVES ---

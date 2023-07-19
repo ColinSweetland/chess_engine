@@ -243,13 +243,12 @@ move_list Position::pseudo_legal_moves() const
 
     // --- CASTLING ---
 
-    // this will give us the castle rights of the moving side only
-    // so even if we are black, we still use "white" here in this section
-    char moving_cr = ((castle_r) >> (stm * 2)) & WCR;
+    CASTLE_RIGHT CR_KS = stm ? CR_BKS : CR_WKS;
+    CASTLE_RIGHT CR_QS = stm ? CR_BQS : CR_WQS;
 
     bool check = is_check(stm);
     // kingside
-    if (!check && (moving_cr & WKS))
+    if (!check && has_cr(CR_KS))
     {
         // squares between rook and king must be free
         // aka the kingside rook can attack our king
@@ -271,7 +270,7 @@ move_list Position::pseudo_legal_moves() const
     }
 
     // Queenside, see comments above
-    if (!check && (moving_cr & WQS))
+    if (!check && has_cr(CR_QS))
     {
         int queenside_rooksq = stm == BLACK ? 56 : 0;
 
