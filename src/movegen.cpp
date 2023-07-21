@@ -54,14 +54,14 @@ move_list Position::pseudo_legal_moves() const
 
         if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::KNIGHT_PROMO});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::BISHOP_PROMO});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::ROOK_PROMO});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::QUEEN_PROMO});
+            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq);
+            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq);
+            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq);
+            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq);
         }
         else
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::NO_FLAGS});
+            pl_moves.emplace_back(PAWN, orig_sq, dest_sq);
         }
     }
 
@@ -74,7 +74,7 @@ move_list Position::pseudo_legal_moves() const
 
         square orig_sq = dest_sq - (pawn_push_dir * 2);
 
-        pl_moves.push_back({orig_sq, dest_sq, ChessMove::flags::DOUBLE_PUSH});
+        pl_moves.emplace_back(PAWN, orig_sq, dest_sq);
     }
 
     // pawn attacks east
@@ -88,18 +88,23 @@ move_list Position::pseudo_legal_moves() const
 
         PIECE captured = piece_at_sq(dest_sq);
 
-        captured = captured == NO_PIECE ? EN_PASSANTE : captured;
-
-        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        // en passante capture
+        if (captured == NO_PIECE)
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)});
+            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
         }
+        // promotion capture
+        else if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        {
+            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
+        }
+        // all others
         else
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, captured);
         }
     }
 
@@ -114,18 +119,23 @@ move_list Position::pseudo_legal_moves() const
 
         PIECE captured = piece_at_sq(dest_sq);
 
-        captured = captured == NO_PIECE ? EN_PASSANTE : captured;
-
-        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        // en passante capture
+        if (captured == NO_PIECE)
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, KNIGHT)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, BISHOP)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, ROOK)});
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, QUEEN)});
+            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
         }
+        // promotion capture
+        else if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        {
+            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
+            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
+        }
+        // all others
         else
         {
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, captured);
         }
     }
 
@@ -148,7 +158,7 @@ move_list Position::pseudo_legal_moves() const
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(KNIGHT, orig_sq, dest_sq, captured);
         }
     }
 
@@ -171,7 +181,7 @@ move_list Position::pseudo_legal_moves() const
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(BISHOP, orig_sq, dest_sq, captured);
         }
     }
 
@@ -194,7 +204,7 @@ move_list Position::pseudo_legal_moves() const
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(ROOK, orig_sq, dest_sq, captured);
         }
     }
 
@@ -218,7 +228,7 @@ move_list Position::pseudo_legal_moves() const
 
             PIECE captured = piece_at_sq(dest_sq);
 
-            pl_moves.push_back({orig_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+            pl_moves.emplace_back(QUEEN, orig_sq, dest_sq, captured);
         }
     }
 
@@ -226,7 +236,7 @@ move_list Position::pseudo_legal_moves() const
 
     bitboard kng = pieces(stm, KING);
 
-    // there can only be one king
+    // there will always be exactly 1 king
     square kng_sq = BB_LSB(kng);
 
     bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
@@ -238,7 +248,7 @@ move_list Position::pseudo_legal_moves() const
 
         PIECE captured = piece_at_sq(dest_sq);
 
-        pl_moves.push_back({kng_sq, dest_sq, ChessMove::makeflag(captured, NO_PIECE)});
+        pl_moves.emplace_back(KING, kng_sq, dest_sq, captured);
     }
 
     // --- CASTLING ---
@@ -262,11 +272,7 @@ move_list Position::pseudo_legal_moves() const
 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
-        {
-            square dest_sq = kng_sq + (EAST * 2);
-
-            pl_moves.push_back({kng_sq, dest_sq, ChessMove::flags::KINGSIDE_CASTLE});
-        }
+            pl_moves.emplace_back(KING, kng_sq, kng_sq + (EAST * 2));
     }
 
     // Queenside, see comments above
@@ -280,11 +286,7 @@ move_list Position::pseudo_legal_moves() const
                      || sq_attacked(kng_sq + (WEST * 2), static_cast<COLOR>(!stm));
 
         if (spaces_free & !attacked)
-        {
-            square dest_sq = kng_sq + (WEST * 2);
-
-            pl_moves.push_back({kng_sq, dest_sq, ChessMove::flags::QUEENSIDE_CASTLE});
-        }
+            pl_moves.emplace_back(KING, kng_sq, kng_sq + (WEST * 2));
     }
 
     pl_moves.shrink_to_fit(); // we are done adding elements

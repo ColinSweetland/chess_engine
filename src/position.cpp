@@ -119,6 +119,12 @@ void Position::move_piece(COLOR c, PIECE p, square orig, square dest)
     place_piece(c, p, dest);
 }
 
+void Position::move_and_change_piece(COLOR c, PIECE orig_p, PIECE new_p, square orig_sq, square dest_sq)
+{
+    remove_piece(c, orig_p, orig_sq);
+    place_piece(c, new_p, dest_sq);
+}
+
 PIECE Position::piece_at_sq(square sq) const
 {
     for (int p = PAWN; p <= KING; p++)
@@ -225,100 +231,100 @@ GAME_OVER Position::is_game_over()
         return GAME_OVER::NOT_GAME_OVER;
 }
 
-void Position::make_move(const ChessMove c)
+void Position::make_move(ChessMove move)
 {
-    square orig_sq = c.get_origin_sq();
-    square dest_sq = c.get_dest_sq();
+    assert(move.get_orig() != move.get_dest());
 
-    assert(orig_sq != dest_sq);
-
-    PIECE moved_piece      = piece_at_sq(orig_sq);
-    PIECE captured_piece   = NO_PIECE;
-    PIECE after_move_piece = c.is_promo() ? c.get_promo_piece() : moved_piece;
-
-    rev_move_data rmd{c, rev_moves, castle_r, captured_piece, pos_bbs[EN_PASSANTE]};
-
-    int pushdir = PAWN_PUSH_DIR(stm);
+    // store reversible move data
+    unmake_stack.emplace_back(move, rev_moves, castle_r, pos_bbs[EN_PASSANTE]);
 
     // increment rev move counter (will be reset later if it needs to)
     rev_moves += 1;
     // increase full moves (only if black)
     full_moves += stm;
 
-    // en passante is always cleared after a move, or set if it was double push
-    if (c.is_double_push())
-        pos_bbs[EN_PASSANTE] = BB_SQ(orig_sq + pushdir);
-
+    // en passante is set if it's a double push, else cleared
+    if (move.is_double_push())
+        pos_bbs[EN_PASSANTE] = BB_SQ(move.get_orig() + PAWN_PUSH_DIR(stm));
     else
         pos_bbs[EN_PASSANTE] = BB_ZERO;
 
+    switch (move.get_moved_piece())
+    {
     // moving pawns is not reversible
-    if (moved_piece == PAWN)
+    case PAWN:
         rev_moves = 0;
+        break;
 
     // moving king always unsets castle rights for moving side
-    else if (moved_piece == KING)
+    case KING:
         remove_cr(stm ? CR_BKQS : CR_WKQS);
+        break;
 
     // if we move rook from starting square, we must unset castle rights
-    else if (moved_piece == ROOK)
+    case ROOK:
     {
         square ks_rooksq = stm ? 63 : 7;
         square qs_rooksq = stm ? 56 : 0;
 
-        if (orig_sq == ks_rooksq)
+        if (move.get_orig() == ks_rooksq)
             remove_cr(stm ? CR_BKS : CR_WKS);
 
-        else if (orig_sq == qs_rooksq)
+        else if (move.get_orig() == qs_rooksq)
             remove_cr(stm ? CR_BQS : CR_WQS);
+        break;
+    }
+    // no other piece needs special treatment
+    default:
+        break;
     }
 
     // special moves section
-    if (c.is_capture())
+    if (move.is_capture())
     {
-        square cap_square = dest_sq;
+        square cap_square = move.get_dest();
+        PIECE  cap_piece  = move.get_captured_piece();
 
         // for en_passante, the capture square is
         // different than the square the pawn ends up
-        if (c.is_en_passante())
-            cap_square -= pushdir;
-
-        captured_piece = piece_at_sq(cap_square);
-
-        rmd.captured_piece = captured_piece;
-
+        if (cap_piece == EN_PASSANTE)
+        {
+            cap_piece = PAWN;
+            cap_square -= PAWN_PUSH_DIR(stm);
+        }
         // if we capture enemy rook from starting square, we must unset castle rights
-        if (captured_piece == ROOK)
+        if (move.get_captured_piece() == ROOK)
         {
             square enemy_ks_rooksq = stm ? 7 : 63;
             square enemy_qs_rooksq = stm ? 0 : 56;
 
-            if (dest_sq == enemy_ks_rooksq)
+            if (move.get_dest() == enemy_ks_rooksq)
                 remove_cr(stm ? CR_WKS : CR_BKS);
 
-            else if (dest_sq == enemy_qs_rooksq)
+            else if (move.get_dest() == enemy_qs_rooksq)
                 remove_cr(stm ? CR_WQS : CR_BQS);
         }
 
         // remove the captured piece
-        remove_piece(static_cast<COLOR>(!stm), captured_piece, cap_square);
+        remove_piece(static_cast<COLOR>(!stm), cap_piece, cap_square);
 
         // captures are not reversible
         rev_moves = 0;
     }
-    else if (c.is_castle())
+    else if (move.is_castle())
     {
         square rook_sq;
         square rook_dest;
-        if (c.get_flags() == ChessMove::KINGSIDE_CASTLE)
+        // kingside castle
+        if (FILE_FROM_SQ(move.get_dest()) == 7)
         {
             rook_sq   = stm ? 63 : 7;
-            rook_dest = dest_sq + WEST;
+            rook_dest = move.get_dest() + WEST;
         }
-        else
+        else // queenside castle
         {
             rook_sq   = stm ? 56 : 0;
-            rook_dest = dest_sq + EAST;
+            rook_dest = move.get_dest() + EAST;
         }
 
         // we only have to move the rook, since we will move the king
@@ -326,34 +332,23 @@ void Position::make_move(const ChessMove c)
     }
 
     // finally move the moved piece
-    // can't use move_piece helper here because it can be a promotion
-    remove_piece(stm, moved_piece, orig_sq);
-    place_piece(stm, after_move_piece, dest_sq);
+    move_and_change_piece(stm, move.get_moved_piece(), move.get_after_move_piece(), move.get_orig(), move.get_dest());
 
     // now it's the other side's turn
     stm = static_cast<COLOR>(!stm);
-
-    // store reversible move data
-    unmake_stack.push_back(rmd);
 }
 
-void Position::unmake_last(void)
+void Position::unmake_last()
 {
-    rev_move_data rmd = unmake_stack.back();
+    const rev_move_data rmd = unmake_stack.back();
     unmake_stack.pop_back();
 
-    ChessMove m = rmd.move;
+    const ChessMove move = rmd.move;
 
     // restore unrestorable data
     pos_bbs[EN_PASSANTE] = rmd.enp_bb;
     rev_moves            = rmd.rev_move_clock;
     castle_r             = rmd.castle_r;
-
-    PIECE after_move_piece = piece_at_sq(m.get_dest_sq());
-    PIECE orig_piece       = m.is_promo() ? PAWN : after_move_piece;
-
-    square dest_sq = m.get_dest_sq();
-    square orig_sq = m.get_origin_sq();
 
     // swap stm back to who made the move
     stm = static_cast<COLOR>(!stm);
@@ -361,38 +356,39 @@ void Position::unmake_last(void)
     // if the move was made by black, decrement
     full_moves -= stm;
 
-    // remove piece from dest sq
-    remove_piece(stm, after_move_piece, dest_sq);
+    // move piece back and maybe unpromote
+    move_and_change_piece(stm, move.get_after_move_piece(), move.get_moved_piece(), move.get_dest(), move.get_orig());
 
-    // restore piece to orig sq
-    place_piece(stm, orig_piece, orig_sq);
-
-    if (m.is_capture())
+    if (move.is_capture())
     {
-        square cap_sq = dest_sq;
+        square cap_sq    = move.get_dest();
+        PIECE  cap_piece = move.get_captured_piece();
 
-        if (m.is_en_passante())
+        if (move.is_en_passante())
         {
             cap_sq -= PAWN_PUSH_DIR(stm);
+            cap_piece = PAWN;
         }
 
         // restore captured piece
-        place_piece(static_cast<COLOR>(!stm), rmd.captured_piece, cap_sq);
+        place_piece(static_cast<COLOR>(!stm), cap_piece, cap_sq);
     }
-    else if (m.is_castle())
+    else if (move.is_castle())
     {
         square rook_orig;
         square rook_dest;
 
-        if (m.get_flags() == ChessMove::KINGSIDE_CASTLE)
+        // kingside castle
+        if (FILE_FROM_SQ(move.get_dest()) == 7)
         {
             rook_orig = stm ? 63 : 7;
-            rook_dest = dest_sq + WEST;
+            rook_dest = move.get_dest() + WEST;
         }
+        // queenside castle
         else
         {
             rook_orig = stm ? 56 : 0;
-            rook_dest = dest_sq + EAST;
+            rook_dest = move.get_dest() + EAST;
         }
 
         // restore rook to it's original square

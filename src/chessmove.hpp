@@ -6,103 +6,64 @@
 #include "bitboard.hpp"
 #include "types.hpp"
 
-// Move = 16 bits
-// 0-5 from sq
-// 6-11 to sq
-// 12-15 flags
-
-// Credit: Chessprogamming wiki https://www.chessprogramming.org/Encoding_Moves#From-To_Based
-// Also: Stockfish (has similar representation)
 class ChessMove
 {
   private:
-    std::uint16_t m_move;
+    // aftermove_piece is like promotion piece
+    // except same as moved_piece for non promotions
+    PIECE m_moved_piece;
+    PIECE m_aftermove_piece;
+
+    square m_orig_sq;
+    square m_dest_sq;
+
+    PIECE m_cap_piece;
 
   public:
-    enum flags
+    // default constructor (null move)
+    ChessMove()
+        : m_moved_piece(NO_PIECE), m_aftermove_piece(NO_PIECE), m_orig_sq(0), m_dest_sq(0), m_cap_piece(NO_PIECE)
     {
-        NO_FLAGS    = 0,
-        DOUBLE_PUSH = 1,
-
-        // Castling has bit 1 set
-        KINGSIDE_CASTLE  = 2,
-        QUEENSIDE_CASTLE = 3,
-
-        // Captures have bit 2 set
-        // Q: is it even necessary to indicate captures, since we can just check piece set at dest sq?
-        CAPTURE          = 4,
-        EP_CAP           = 5,
-        UNUSED_CAP_FLAG1 = 6,
-        UNUSED_CAP_FLAG2 = 7,
-
-        // promos have bit 3 set, maybe we don't need all promos represented
-        // (promoting to anything but knight or queen is always suboptimal)
-        KNIGHT_PROMO     = 8,
-        BISHOP_PROMO     = 9,
-        ROOK_PROMO       = 10,
-        QUEEN_PROMO      = 11,
-        KNIGHT_PROMO_CAP = 12,
-        BISHOP_PROMO_CAP = 13,
-        ROOK_PROMO_CAP   = 14,
-        QUEEN_PROMO_CAP  = 15,
-    };
-
-    inline ChessMove(square orig = 0, square dest = 0, int flags = 0)
-    {
-        m_move = ((flags & 0xf) << 12) | ((orig & 0x3f) << 6) | (dest & 0x3f);
     }
 
-    inline square       get_dest_sq() const { return m_move & 0x3f; }
-    inline square       get_origin_sq() const { return (m_move >> 6) & 0x3f; }
-    inline unsigned int get_flags() const { return (m_move >> 12) & 0x0f; }
-
-    inline PIECE get_promo_piece() const
+    // regular constructor
+    ChessMove(PIECE moved, square orig, square dest, PIECE cap = NO_PIECE)
+        : m_moved_piece(moved), m_aftermove_piece(moved), m_orig_sq(orig), m_dest_sq(dest), m_cap_piece(cap)
     {
-        return static_cast<PIECE>(is_promo() ? (get_flags() - (is_capture() ? 9 : 5)) : NO_PIECE);
     }
 
-    inline bool is_promo() const { return get_flags() & 8; }
-    inline bool is_capture() const { return get_flags() & 4; }
+    // promo constructor
+    ChessMove(PIECE moved, PIECE promo, square orig, square dest, PIECE cap = NO_PIECE)
+        : m_moved_piece(moved), m_aftermove_piece(promo), m_orig_sq(orig), m_dest_sq(dest), m_cap_piece(cap)
+    {
+    }
+
+    // getters
+    inline square get_orig() const { return m_orig_sq; }
+    inline square get_dest() const { return m_dest_sq; }
+    inline PIECE  get_moved_piece() const { return m_moved_piece; }
+    inline PIECE  get_captured_piece() const { return m_cap_piece; }
+    inline PIECE  get_after_move_piece() const { return m_aftermove_piece; }
+
+    inline bool is_promo() const { return m_moved_piece != m_aftermove_piece; }
+    inline bool is_capture() const { return m_cap_piece != NO_PIECE; }
 
     inline bool is_castle() const
     {
-        int f = get_flags();
-        return f == flags::KINGSIDE_CASTLE || f == QUEENSIDE_CASTLE;
+        return m_moved_piece == KING && FILE_FROM_SQ(m_orig_sq) == 5
+            && (FILE_FROM_SQ(m_dest_sq) == 3 || FILE_FROM_SQ(m_dest_sq) == 7);
     }
 
-    inline bool is_double_push() const { return get_flags() == DOUBLE_PUSH; }
-    inline bool is_en_passante() const { return get_flags() == EP_CAP; }
+    inline bool is_double_push() const
+    {
+        return m_moved_piece == PAWN && abs(RANK_FROM_SQ(m_orig_sq) - RANK_FROM_SQ(m_dest_sq)) == 2;
+    }
+    inline bool is_en_passante() const { return m_cap_piece == EN_PASSANTE; }
 
     inline str to_str() const
     {
-        str temp = SQ_TO_STR(get_origin_sq()) + SQ_TO_STR(get_dest_sq());
-        return is_promo() ? temp + piece_to_char.at(get_promo_piece()) : temp;
-    }
-
-    // helper - returns flag with capture/promo
-    static constexpr ChessMove::flags makeflag(PIECE cap, PIECE pro)
-    {
-        int f = 0;
-        if (pro == NO_PIECE)
-            switch (cap)
-            {
-            case NO_PIECE:
-                f = ChessMove::NO_FLAGS;
-                break;
-            case EN_PASSANTE:
-                f = ChessMove::EP_CAP;
-                break;
-            default:
-                f = ChessMove::CAPTURE;
-                break;
-            }
-        else
-        {
-            f = cap == NO_PIECE ? ChessMove::KNIGHT_PROMO : ChessMove::KNIGHT_PROMO_CAP;
-            f += (pro - KNIGHT);
-        }
-
-        return static_cast<ChessMove::flags>(f);
+        str temp = SQ_TO_STR(m_orig_sq) + SQ_TO_STR(m_dest_sq);
+        return is_promo() ? temp + piece_to_char.at(m_aftermove_piece) : temp;
     }
 };
 
@@ -114,8 +75,13 @@ struct rev_move_data
     ChessMove    move;
     unsigned int rev_move_clock;
     unsigned int castle_r;
-    PIECE        captured_piece;
     bitboard     enp_bb;
+
+    // constructor needed to use emplace_back
+    rev_move_data(ChessMove m, unsigned int rmc, unsigned int cr, bitboard ep)
+        : move(m), rev_move_clock(rmc), castle_r(cr), enp_bb(ep)
+    {
+    }
 };
 
 using move_list = std::vector<ChessMove>;

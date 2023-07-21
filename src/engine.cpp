@@ -14,7 +14,7 @@
 #include "util.hpp"
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)
-static ChessMove UCI_move(Position pos, str move_string)
+static const ChessMove UCI_move(Position& pos, str move_string)
 {
     const int origin_file = move_string[0] - 'a' + 1;
     const int origin_rank = move_string[1] - '1' + 1;
@@ -32,7 +32,7 @@ static ChessMove UCI_move(Position pos, str move_string)
 
     PIECE capture_p = pos.piece_at_sq(dest);
 
-    PIECE promo_p = NO_PIECE;
+    PIECE after_move_p = moved_p;
 
     // pawn special info
     if (moved_p == PAWN)
@@ -40,30 +40,12 @@ static ChessMove UCI_move(Position pos, str move_string)
         // En passante capture
         if (dest_file != origin_file && capture_p == NO_PIECE)
             capture_p = EN_PASSANTE;
-
-        // double push
-        else if (dest == origin + PAWN_PUSH_DIR(pos.side_to_move()) * 2)
-            return {origin, dest, ChessMove::flags::DOUBLE_PUSH};
-
         // promo
         else if (dest_rank == promo_rank)
-            promo_p = char_to_piece.at(move_string[4]);
-    }
-    else if (moved_p == KING)
-    {
-        // check if castle
-        if (origin_file == 5 /*e*/)
-        {
-            // If the king ever moves 2 files, it's a castle move
-            if (dest_file == 3 /*c*/)
-                return {origin, dest, ChessMove::flags::QUEENSIDE_CASTLE};
-
-            else if (dest_file == 7 /*g*/)
-                return {origin, dest, ChessMove::flags::KINGSIDE_CASTLE};
-        }
+            after_move_p = char_to_piece.at(move_string[4]);
     }
 
-    return {origin, dest, ChessMove::makeflag(capture_p, promo_p)};
+    return {moved_p, after_move_p, origin, dest, capture_p};
 }
 
 static void perft(Position& pos, int depth, std::vector<std::uint64_t>& perft_results)

@@ -29,6 +29,7 @@ class Position
     void remove_piece(COLOR c, PIECE p, square sq);
     void place_piece(COLOR c, PIECE p, square sq);
     void move_piece(COLOR c, PIECE p, square orig, square dest);
+    void move_and_change_piece(COLOR c, PIECE orig_p, PIECE new_p, square orig_sq, square dest_sq);
 
     bool has_cr(CASTLE_RIGHT cr) const { return castle_r & cr; }
     void remove_cr(CASTLE_RIGHT cr) { castle_r &= ~cr; }
