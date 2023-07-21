@@ -86,6 +86,8 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
     // print file label
     out << "\n\n\t a  b  c  d  e  f  g  h\n\n";
 
+    out << "FEN: " << p.FEN() << "\n\n";
+
     return out;
 }
 

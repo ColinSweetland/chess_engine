@@ -1,17 +1,54 @@
 #include <array>
 #include <cassert>
-#include <chrono>
 #include <cstdint>
-#include <iomanip>
 #include <sstream>
 
 #include "chessmove.hpp"
 #include "engine.hpp"
 #include "evaluate.hpp"
 #include "movegen.hpp"
+#include "perft.hpp"
 #include "position.hpp"
 #include "types.hpp"
 #include "util.hpp"
+
+static bool interactive = false;
+
+void Engine::set_interactive() { interactive = true; }
+
+// send "info string" message - omit "info string" if interactive
+static void send_info(str message)
+{
+    if (!interactive)
+        std::cout << "info string ";
+    std::cout << message << '\n';
+}
+
+// uci command -> identify engine with id
+//             -> TODO: set options with option cmd
+//             -> uciok cmd to verify using uci
+static void uci_cmd()
+{
+    std::cout << "id name test_engine\n"
+              << "id author Colin Sweetland\n"
+              << "uciok\n";
+}
+
+const uint8_t DEFAULT_SEARCH_DEPTH = 4;
+
+// go -> find best move
+static void go_cmd(Position& pos, std::vector<str>& tokens)
+{
+    uint8_t depth = DEFAULT_SEARCH_DEPTH;
+
+    // search for 'depth' subcommand (others not supported right now)
+    // stop 1 short of the end because depth command needs an argument
+    for (size_t i = 0; i < tokens.size() - 1; i++)
+        if (tokens[i] == "depth")
+            depth = std::stoi(tokens[++i]);
+
+    std::cout << "bestmove " << Engine::best_move(pos, depth) << '\n';
+}
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)
 static const ChessMove UCI_move(Position& pos, str move_string)
@@ -48,107 +85,49 @@ static const ChessMove UCI_move(Position& pos, str move_string)
     return {moved_p, after_move_p, origin, dest, capture_p};
 }
 
-static void perft(Position& pos, int depth, std::vector<std::uint64_t>& perft_results)
+// position -> set current position
+static void position_cmd(Position& pos, std::vector<str>& tokens)
 {
-    if (depth == 0)
+    size_t i = 3;
+
+    // fen strings should have 6 tokens (space seperated fields)
+    // -> position fen (6 tokens) = 8
+    if (tokens.size() >= 8 && tokens[1] == "fen")
     {
-        perft_results.back() = 1;
-        return;
+        str fen;
+        // collect tokens until "moves" or out of tokens
+        for (i = 2; i < tokens.size(); i++)
+        {
+            if (tokens[i] == "moves")
+            {
+                i++; // consume 'moves' token
+                break;
+            }
+            // our fen parser can handle space at the end
+            fen += tokens[i];
+            fen += ' ';
+        }
+
+        pos = {fen};
+    }
+    else if (tokens.size() >= 2 && tokens[1] == "startpos")
+        pos = {};
+    else
+        return; // ignore invalid input -> noop
+
+    // make moves after "moves" token if we have one
+    for (; i < tokens.size(); i++)
+    {
+        ChessMove uci_m = UCI_move(pos, tokens[i]);
+        pos.make_move(uci_m);
     }
 
-    // we won't use legal_moves here because we end up
-    // wasting a unmake
-    move_list pl_moves = pos.pseudo_legal_moves();
-
-    perft_results[depth - 1] += pl_moves.size();
-
-    for (ChessMove move : pl_moves)
-    {
-        if (pos.try_make_move(move))
-        {
-
-            perft(pos, depth - 1, perft_results);
-            pos.unmake_last();
-        }
-        else
-        {
-            // there was an illegal move, it doesn't count
-            perft_results[depth - 1] -= 1;
-        }
-    }
+    // interactive mode feature: auto print the position
+    if (interactive)
+        std::cout << pos;
 }
 
-void Engine::perft_report(Position& pos, int depth)
-{
-    assert(depth >= 0);
-
-    std::vector<std::uint64_t> perft_results(depth + 1, 0);
-
-    const auto start = std::chrono::steady_clock::now();
-
-    perft(pos, depth, perft_results);
-
-    const auto end = std::chrono::steady_clock::now();
-
-    const std::chrono::duration<double> elapsed_sec = end - start;
-
-    std::cout << "\nDEPTH | NODES \n------------------\n";
-
-    std::cout << std::left;
-    for (int i = depth; i >= 0; i--)
-    {
-        std::cout << std::setw(6) << depth - i << "| " << util::pretty_int(perft_results.at(i)) << '\n';
-    }
-    // restore default
-    std::cout << std::right;
-
-    const std::uint64_t nps = perft_results.front() / elapsed_sec.count();
-
-    std::cout << "\nTime elapsed: " << elapsed_sec.count() << "s\t(" << util::pretty_int(nps) << " Nodes/sec)\n\n";
-}
-
-void Engine::perft_report_divided(Position& pos, int depth)
-{
-    assert(depth >= 1);
-
-    const auto start = std::chrono::steady_clock::now();
-
-    move_list ml = pos.pseudo_legal_moves();
-
-    // nodes are only leaves (depth 0)
-    std::uint64_t total_nodes = 0;
-
-    for (ChessMove move : ml)
-    {
-        if (pos.try_make_move(move))
-        {
-            std::vector<uint64_t> perft_results(depth, 0);
-
-            perft(pos, depth - 1, perft_results);
-
-            std::cout << move << ": " << perft_results.front();
-
-            std::cout << '\n';
-
-            total_nodes += perft_results.front();
-
-            pos.unmake_last();
-        }
-    }
-
-    const auto end = std::chrono::steady_clock::now();
-
-    const std::chrono::duration<double> elapsed_sec = end - start;
-
-    const std::uint64_t nps = total_nodes / elapsed_sec.count();
-
-    std::cout << "\nNodes searched: " << util::pretty_int(total_nodes) << '\n';
-    std::cout << "Time elapsed: " << elapsed_sec.count() << "s "
-              << "(" << util::pretty_int(nps) << " Nodes/sec)\n";
-}
-
-const size_t  MAX_UCI_INPUT_SIZE   = 1024;
-const uint8_t DEFAULT_SEARCH_DEPTH = 4;
+const size_t MAX_UCI_INPUT_SIZE = 1024;
 
 void Engine::uci_loop()
 {
@@ -160,7 +139,10 @@ void Engine::uci_loop()
 
     std::vector<str> cmd_tokens;
 
-    while (1)
+    if (interactive)
+        send_info("running interactively");
+
+    for (bool quit = false; !quit;)
     {
         // get one line (command) and store it into input buf
         // then make a stream 'line' with the input buf
@@ -176,97 +158,43 @@ void Engine::uci_loop()
         if (cmd_tokens.size() == 0)
             continue;
 
-        // parse the commands
+        // now parse the commands
+
         if (cmd_tokens[0] == "uci")
-        {
-            // uci command -> identify engine with id
-            //             -> TODO: set options with option
-            //             -> uciok to verify using uci
-            std::cout << "id name test_engine\n"
-                      << "id author Colin Sweetland\n"
-                      << "uciok\n";
-        }
+            uci_cmd();
+
         else if (cmd_tokens[0] == "quit")
-        {
-            // quit command -> exit
-            std::cout << "info string receieved quit command. exiting...\n";
-            break;
-        }
+            quit = true;
+
+        //  sync with GUI
         else if (cmd_tokens[0] == "isready")
-        {
-            // isready -> used for sync with GUI
-            //         -> always respond "readyok"
             std::cout << "readyok\n";
-        }
+
+        // setoption name <id> value <x> -> set an engine option (we have none right now)
         else if (cmd_tokens[0] == "setoption")
-        {
-            // setoption name <id> value <x> -> set an engine option (we have none right now)
-            std::cout << "info string options not implemented\n";
-        }
-        else if (cmd_tokens[0] == "position" && cmd_tokens.size() >= 2)
-        {
-            // position -> set current position
+            send_info("options not implemented");
 
-            size_t i = 3;
+        else if (cmd_tokens[0] == "position")
+            position_cmd(pos, cmd_tokens);
 
-            // fen strings should have 6 tokens -> position fen (6 tokens) = 8
-            if (cmd_tokens[1] == "fen" && cmd_tokens.size() >= 8)
-            {
-                str fen;
-                // collect tokens until "moves" or out of tokens
-                for (i = 2; i < cmd_tokens.size(); i++)
-                {
-                    if (cmd_tokens[i] == "moves")
-                    {
-                        i++; // consume 'moves' token
-                        break;
-                    }
-                    // our fen parser can handle space at the end
-                    fen += cmd_tokens[i];
-                    fen += ' ';
-                }
-
-                pos = {fen};
-            }
-            else if (cmd_tokens[1] == "startpos")
-                pos = {};
-            else
-                continue; // ignore invalid input
-
-            // make moves after "moves" token if we have one
-            for (; i < cmd_tokens.size(); i++)
-            {
-                ChessMove uci_m = UCI_move(pos, cmd_tokens[i]);
-                pos.make_move(uci_m);
-            }
-        }
+        // ucinewgame -> next position command will be a new game
+        //            -> reset necessary state (e.g. transposition table) (we have none right now)
         else if (cmd_tokens[0] == "ucinewgame")
-        {
-            // ucinewgame -> next position command will be a new game
-            //            -> reset necessary state (we have none)
-            std::cout << "info string got command 'ucinewgame' but nothing to do\n";
-        }
+            send_info("got command 'ucinewgame' but nothing to do");
+
         else if (cmd_tokens[0] == "go")
-        {
-            // go -> many different commands depending on subcommands
-            //    -> mainly search for next best move
+            go_cmd(pos, cmd_tokens);
 
-            uint8_t depth = DEFAULT_SEARCH_DEPTH;
-
-            for (size_t i = 0; i < cmd_tokens.size() - 1; i++)
-                if (cmd_tokens[i] == "depth")
-                    depth = std::stoi(cmd_tokens[++i]);
-
-            std::cout << "bestmove " << best_move(pos, depth) << '\n';
-        }
         //*******CUSTOM COMMANDS*********
         else if (cmd_tokens[0] == "printpos")
             std::cout << pos;
 
         else if (cmd_tokens[0] == "printfen")
             std::cout << pos.FEN() << '\n';
+
         else if (cmd_tokens[0] == "printeval")
             std::cout << "EVAL: " << evaluate(pos) << '\n';
+
         else if (cmd_tokens[0] == "make")
         {
             pos.make_move(UCI_move(pos, cmd_tokens[1]));
@@ -279,17 +207,18 @@ void Engine::uci_loop()
         }
         else if (cmd_tokens[0] == "dumphist")
             pos.dump_move_history();
+
         else if (cmd_tokens[0] == "perft")
         {
             int perft_depth = std::stoi(cmd_tokens[1]);
 
-            perft_report(pos, perft_depth);
+            Engine::perft_report(pos, perft_depth);
         }
         else if (cmd_tokens[0] == "perftdiv")
         {
             int perft_depth = std::stoi(cmd_tokens[1]);
 
-            perft_report_divided(pos, perft_depth);
+            Engine::perft_report_divided(pos, perft_depth);
         }
 
     } // end while

@@ -8,11 +8,13 @@
 namespace Engine
 {
 
+// interactive mode alters the engine's behavior in terminal
+// to be more suited for humans rather than chess GUIS
+void set_interactive();
+
 void uci_loop();
 
-void perft_report(Position& pos, int depth);
 
-void perft_report_divided(Position& pos, int depth);
 
 } // namespace Engine
 

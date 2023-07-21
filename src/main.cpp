@@ -1,7 +1,10 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <iostream>
+// #include <iostream>
+
+// unix std header
+#include <unistd.h>
 
 #include "bitboard.hpp"
 #include "engine.hpp"
@@ -17,6 +20,10 @@ void init(void)
 
 int main(void)
 {
+    // set engine to interactive mode if stdout is a interactive terminal
+    if (isatty(STDOUT_FILENO))
+        Engine::set_interactive();
+
     srand(time(NULL));
     init();
     Engine::uci_loop();
