@@ -89,6 +89,12 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
     return out;
 }
 
+void Position::dump_move_history() const
+{
+    for (auto rmd : unmake_stack)
+        std::cout << rmd.move << '\n';
+}
+
 void Position::remove_piece(COLOR c, PIECE p, square sq)
 {
     assert(BB_IS_SET_AT(pos_bbs[c], sq));

@@ -70,6 +70,8 @@ class Position
 
     str FEN() const;
 
+    void dump_move_history() const;
+
     friend std::ostream& operator<<(std::ostream& out, const Position& p);
 };
 

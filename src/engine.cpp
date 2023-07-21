@@ -285,7 +285,18 @@ void Engine::uci_loop()
             std::cout << pos.FEN() << '\n';
         else if (cmd_tokens[0] == "printeval")
             std::cout << "EVAL: " << evaluate(pos) << '\n';
-
+        else if (cmd_tokens[0] == "make")
+        {
+            pos.make_move(UCI_move(pos, cmd_tokens[1]));
+            std::cout << pos;
+        }
+        else if (cmd_tokens[0] == "unmake")
+        {
+            pos.unmake_last();
+            std::cout << pos;
+        }
+        else if (cmd_tokens[0] == "dumphist")
+            pos.dump_move_history();
         else if (cmd_tokens[0] == "perft")
         {
             int perft_depth = std::stoi(cmd_tokens[1]);
