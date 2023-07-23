@@ -1,6 +1,7 @@
 #ifndef CHESS_MOVE_INCL
 #define CHESS_MOVE_INCL
 
+#include <iostream>
 #include <stdint.h>
 
 #include "bitboard.hpp"
@@ -45,7 +46,9 @@ class ChessMove
     inline PIECE  get_captured_piece() const { return m_cap_piece; }
     inline PIECE  get_after_move_piece() const { return m_aftermove_piece; }
 
-    inline bool is_promo() const { return m_moved_piece != m_aftermove_piece; }
+    inline bool  is_promo() const { return m_moved_piece != m_aftermove_piece; }
+    inline PIECE get_promo_piece() const { return is_promo() ? m_aftermove_piece : NO_PIECE; }
+
     inline bool is_capture() const { return m_cap_piece != NO_PIECE; }
 
     inline bool is_castle() const
@@ -65,6 +68,9 @@ class ChessMove
         str temp = SQ_TO_STR(m_orig_sq) + SQ_TO_STR(m_dest_sq);
         return is_promo() ? temp + piece_to_char.at(m_aftermove_piece) : temp;
     }
+
+    // prints out moveinfo, useful for debugging
+    void dump_info() const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return out << m.to_str(); }
