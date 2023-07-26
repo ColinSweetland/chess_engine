@@ -11,25 +11,34 @@
 static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alpha = INT32_MIN,
                                      centipawn beta = INT32_MAX)
 {
-    if (depth == 0 || pos.is_game_over())
+    // generate pseudolegal moves upfront,
+    // we need to generate them in any case to check if the position is checkmate
+    move_list psl_moves = pos.pseudo_legal_moves();
+
+    // note: this statement doesn't cover every game over case.
+    // in many stalemate/checkmate cases, we will reach to the end of this function,
+    // so don't assume the game isn't over now
+    if (depth == 0 || pos.has_been_50_reversible_full_moves() || psl_moves.size() == 0)
     {
-        centipawn eval = Engine::evaluate(pos, depth);
+        centipawn eval = Engine::evaluate(pos, psl_moves, depth);
 
         return std::make_pair(pos.last_move(), eval);
     }
 
-    move_list ml = pos.pseudo_legal_moves();
+    // order moves to create earlier cutoffs
+    order_moves(psl_moves);
 
-    // pre order moves for earlier cutoffs
-    order_moves(ml);
+    // best_move is initialized to NULL MOVE
+    // if we get to the end and it's still NULL MOVE: it was checkmate or stalemate
+    ChessMove best_move = {};
+    centipawn best_eval;
 
     // maximizing player
     if (pos.side_to_move() == WHITE)
     {
-        centipawn max_eval = INT32_MIN;
-        ChessMove max_eval_move;
+        best_eval = INT32_MIN;
 
-        for (ChessMove move : ml)
+        for (ChessMove move : psl_moves)
         {
             // skip illegal moves
             if (!pos.try_make_move(move))
@@ -37,80 +46,64 @@ static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alp
 
             scored_move scored = alpha_beta_search(pos, depth - 1, alpha, beta);
 
+            // unmake move
+            pos.unmake_last();
+
             // we found a new best move
-            if (scored.second > max_eval)
+            if (scored.second > best_eval)
             {
-                max_eval_move = move;
-                max_eval      = scored.second;
+                best_move = move;
+                best_eval = scored.second;
             }
 
             alpha = std::max(alpha, scored.second);
 
             // cause cutoff, opponent would never make this move
             if (beta <= alpha)
-            {
-                pos.unmake_last();
                 break;
-            }
-            // unmake move from start of loop
-            pos.unmake_last();
         }
-
-        return std::make_pair(max_eval_move, max_eval);
     }
     // minimizing player, see comments above
     else
     {
-        int32_t   min_eval = INT32_MAX;
-        ChessMove min_eval_move;
+        best_eval = INT32_MAX;
 
-        for (ChessMove move : ml)
+        for (ChessMove move : psl_moves)
         {
             if (!pos.try_make_move(move))
                 continue;
 
             scored_move scored = alpha_beta_search(pos, depth - 1, alpha, beta);
 
-            if (scored.second < min_eval)
+            pos.unmake_last();
+
+            if (scored.second < best_eval)
             {
-                min_eval_move = move;
-                min_eval      = scored.second;
+                best_move = move;
+                best_eval = scored.second;
             }
 
             beta = std::min(beta, scored.second);
 
             if (beta <= alpha)
-            {
-                pos.unmake_last();
                 break;
-            }
-
-            pos.unmake_last();
         }
-
-        return std::make_pair(min_eval_move, min_eval);
     }
-}
 
-// game over eval: 0 if game isn't over
-// else checkmate or draw value if it is
-static centipawn game_over_eval(Position& pos)
-{
-    switch (pos.is_game_over())
-    {
-    case NOT_GAME_OVER:
-        return 0;
-        break;
+    // NOTE: don't use evaluate function here because it has to check for checkmate, it does
+    // this by searching for a legal move. we already know if their was or wasn't a legal move
 
-    case FIFTY_MOVE_RULE:
-    case STALEMATE:
-        return Engine::DRAW_EVAL;
-        break;
+    // we found some legal, best move -> return
+    if (!best_move.is_null())
+        return std::make_pair(best_move, best_eval);
 
-    case CHECKMATE:
-        return Engine::CHECKMATE_EVAL(pos.side_to_move());
-        break;
-    }
+    // their were no legal moves and check -> checkmate
+    else if (pos.is_check())
+        return std::make_pair(pos.last_move(), Engine::CHECKMATE_EVAL(pos.side_to_move()));
+
+    // no legal moves and not check -> stalemate
+    else
+        return std::make_pair(pos.last_move(), Engine::DRAW_EVAL);
 }
 
 static centipawn piece_value_eval(Position& pos)
@@ -233,21 +226,45 @@ centipawn piece_sq_table_eval(Position& pos)
 
 ChessMove Engine::best_move(Position& pos, uint8_t depth) { return alpha_beta_search(pos, depth).first; }
 
-centipawn Engine::evaluate(Position& pos, uint8_t depth)
+// we must take a movelist as a parameter to check if it's checkmate or stalemate
+centipawn Engine::evaluate(Position& pos, move_list& pseudo_legal_moves, uint8_t depth)
 {
-    centipawn eval = game_over_eval(pos);
+    // check for a single legal move: to verify not checkmate or stalemate
+    bool has_legal_move = false;
 
-    // not mate
-    if (eval == 0)
+    for (auto move : pseudo_legal_moves)
     {
-        eval += piece_value_eval(pos);
-
-        eval += piece_sq_table_eval(pos);
+        if (pos.try_make_move(move))
+        {
+            has_legal_move = true;
+            pos.unmake_last();
+            break;
+        }
     }
 
-    // tempo bonus means reaching a position with equivalent
-    // evaluation one move earlier is equivalent to +5 centipawn
-    centipawn tempo_bonus = EVAL_SIGN(pos.side_to_move()) * depth * 5;
+    // if we don't have legal moves, it's checkmate or stalemate
+    if (!has_legal_move)
+    {
+        if (pos.is_check())
+            return Engine::CHECKMATE_EVAL(pos.side_to_move());
+        else
+            return Engine::DRAW_EVAL;
+    }
 
-    return eval + tempo_bonus;
+    // if we had a legal moves, but it's been 50 reversible full moves, it's a draw
+    if (pos.has_been_50_reversible_full_moves())
+    {
+        return Engine::DRAW_EVAL;
+    }
+
+    // finally: evaluation for normal positions
+    centipawn eval = piece_value_eval(pos) + piece_sq_table_eval(pos);
+
+
+
+    // add tempo bonus : reaching a position with equivalent
+    // evaluation one move earlier is equivalent to +5 centipawn
+    eval += EVAL_SIGN(pos.side_to_move()) * depth * 5;
+
+    return eval;
 }

@@ -86,19 +86,5 @@ enum CASTLE_RIGHT
     CR_ANY = CR_WQS | CR_WKS | CR_BQS | CR_BKS
 };
 
-enum GAME_OVER
-{
-    NOT_GAME_OVER = 0,
-    CHECKMATE     = 1,
-
-    // below are all draws
-    STALEMATE       = 2,
-    FIFTY_MOVE_RULE = 3,
-
-    /* NOT IMPLEMENTED
-    REPITITION_DRAW = 4,
-    INSUFFICIENT_MAT = 5
-    */
-};
 
 #endif // TYPES_INCL

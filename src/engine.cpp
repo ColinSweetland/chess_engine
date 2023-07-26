@@ -193,8 +193,10 @@ void Engine::uci_loop()
             std::cout << pos.FEN() << '\n';
 
         else if (cmd_tokens[0] == "printeval")
-            std::cout << "EVAL: " << evaluate(pos) << '\n';
-
+        {
+            auto psl = pos.pseudo_legal_moves();
+            std::cout << "EVAL: " << Engine::evaluate(pos, psl) << '\n';
+        }
         else if (cmd_tokens[0] == "make")
         {
             pos.make_move(UCI_move(pos, cmd_tokens[1]));

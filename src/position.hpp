@@ -9,18 +9,35 @@
 #include <iostream>
 #include <vector>
 
+// the state info holds information about the current state of the game
+// & contains all data needed to unmake a move
+struct state_info
+{
+    // all info needed to unmake the last move
+    ChessMove    prev_move{};
+    unsigned int prev_rev_move_count{0};
+    unsigned int prev_castle_r{0};
+    bitboard     prev_enp_bb{0};
+
+    bool is_check;
+    // need a constructor to use emplace_back
+    state_info(ChessMove cm, unsigned int rmc, unsigned int pcr, bitboard pebb)
+        : prev_move(cm), prev_rev_move_count(rmc), prev_castle_r(pcr), prev_enp_bb(pebb)
+    {
+    }
+};
+
 class Position
 {
   private:
     // two for each color, 6 for pieces, 1 for enpassante sq
     std::array<bitboard, 9> pos_bbs{0};
 
-    // all moves that can be unmade
-    std::vector<rev_move_data> unmake_stack{};
+    // all historical state info
+    std::vector<state_info> state_info_stack{};
 
     unsigned int castle_r{0};
-
-    unsigned int rev_moves{0};
+    unsigned int rev_move_count{0};
     unsigned int full_moves{0};
 
     COLOR stm{WHITE};
@@ -43,27 +60,31 @@ class Position
 
     inline const COLOR& side_to_move() const { return stm; }
 
+    // self explanatory but the rules of chess aren't
+    // after this is true, the game can be a draw or win,
+    // but it depends on if their are legal moves.
+    // if the side to move has legal moves, draw, else checkmated
+    inline bool has_been_50_reversible_full_moves() { return rev_move_count >= 100; }
+
     inline const unsigned int& full_move_count() const { return full_moves; }
-    inline const unsigned int& rev_move_count() const { return rev_moves; }
 
     PIECE piece_at_sq(square sq) const;
     COLOR color_at_sq(square sq) const;
 
-    bool      sq_attacked(square sq, COLOR attacking_color) const;
-    bool      is_check(COLOR c) const;
-    GAME_OVER is_game_over();
+    bool sq_attacked(square sq, COLOR attacking_color) const;
 
     // returns all pseudolegal moves, also sets move_count to number of moves generated
     move_list pseudo_legal_moves() const;
 
     move_list legal_moves();
 
+    inline bool      is_check() const { return state_info_stack.back().is_check; }
+    const ChessMove& last_move() const { return state_info_stack.back().prev_move; }
+
     void make_move(const ChessMove c);
     bool try_make_move(const ChessMove c);
 
     void unmake_last();
-
-    const ChessMove& last_move() const;
 
     inline bitboard        pieces() const { return pos_bbs[WHITE] | pos_bbs[BLACK]; }
     inline const bitboard& pieces(int color_or_piece) const { return pos_bbs[color_or_piece]; }

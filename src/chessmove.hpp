@@ -64,6 +64,9 @@ class ChessMove
     }
     inline bool is_en_passante() const { return m_cap_piece == EN_PASSANTE; }
 
+    // ie initialized, but not valid
+    inline bool is_null() { return m_moved_piece == NO_PIECE; }
+
     inline str to_str() const
     {
         str temp = SQ_TO_STR(m_orig_sq) + SQ_TO_STR(m_dest_sq);
@@ -77,21 +80,6 @@ class ChessMove
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return out << m.to_str(); }
-
-// contains all data needed to unmake a move
-struct rev_move_data
-{
-    ChessMove    move;
-    unsigned int rev_move_clock;
-    unsigned int castle_r;
-    bitboard     enp_bb;
-
-    // constructor needed to use emplace_back
-    rev_move_data(ChessMove m, unsigned int rmc, unsigned int cr, bitboard ep)
-        : move(m), rev_move_clock(rmc), castle_r(cr), enp_bb(ep)
-    {
-    }
-};
 
 using move_list = std::vector<ChessMove>;
 

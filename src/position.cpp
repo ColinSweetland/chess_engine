@@ -60,7 +60,7 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
         switch (rank)
         {
         case (7):
-            out << "\tFull Moves: " << p.full_moves << " Rev Moves: " << p.rev_moves;
+            out << "\tFull Moves: " << p.full_moves << " Rev Moves: " << p.rev_move_count;
             break;
 
         case (5):
@@ -93,8 +93,8 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
 
 void Position::dump_move_history() const
 {
-    for (auto rmd : unmake_stack)
-        std::cout << rmd.move << '\n';
+    for (auto st_info : state_info_stack)
+        std::cout << st_info.prev_move << '\n';
 }
 
 void Position::remove_piece(COLOR c, PIECE p, square sq)
@@ -203,45 +203,16 @@ bool Position::sq_attacked(square sq, COLOR attacking_color) const
     return bsh_attkrs;
 }
 
-bool Position::is_check(COLOR c) const
-{
-    square kng_square = BB_LSB(pieces(c, KING));
-
-    assert(VALID_SQ(kng_square));
-
-    return sq_attacked(kng_square, !c);
-}
-
-// this is quite slow because we make and unmake all moves
-// TODO: we should cache the result of pseudo_legal_moves and legal_moves
-// TODO: check for insufficient material draw
-GAME_OVER Position::is_game_over()
-{
-    // 50 move repitition
-    if (rev_move_count() >= 100)
-        return GAME_OVER::FIFTY_MOVE_RULE;
-
-    // very slow way to detect this please fix
-    else if (legal_moves().size() == 0)
-    {
-        if (is_check(side_to_move()))
-            return GAME_OVER::CHECKMATE;
-
-        return GAME_OVER::STALEMATE;
-    }
-    else
-        return GAME_OVER::NOT_GAME_OVER;
-}
-
 void Position::make_move(ChessMove move)
 {
     assert(move.get_orig() != move.get_dest());
 
     // store reversible move data
-    unmake_stack.emplace_back(move, rev_moves, castle_r, pos_bbs[EN_PASSANTE]);
+    state_info_stack.emplace_back(move, rev_move_count, castle_r, pos_bbs[EN_PASSANTE]);
 
     // increment rev move counter (will be reset later if it needs to)
-    rev_moves += 1;
+    rev_move_count += 1;
+
     // increase full moves (only if black)
     full_moves += stm;
 
@@ -255,7 +226,7 @@ void Position::make_move(ChessMove move)
     {
     // moving pawns is not reversible
     case PAWN:
-        rev_moves = 0;
+        rev_move_count = 0;
         break;
 
     // moving king always unsets castle rights for moving side
@@ -311,7 +282,7 @@ void Position::make_move(ChessMove move)
         remove_piece(!stm, cap_piece, cap_square);
 
         // captures are not reversible
-        rev_moves = 0;
+        rev_move_count = 0;
     }
     else if (move.is_castle())
     {
@@ -338,19 +309,23 @@ void Position::make_move(ChessMove move)
 
     // now it's the other side's turn
     stm = !stm;
+
+    // *** update state_info ***
+
+    state_info_stack.back().is_check = sq_attacked(BB_LSB(pieces(stm, KING)), !stm);
 }
 
 void Position::unmake_last()
 {
-    const rev_move_data rmd = unmake_stack.back();
-    unmake_stack.pop_back();
+    const state_info st_info = state_info_stack.back();
+    state_info_stack.pop_back();
 
-    const ChessMove move = rmd.move;
+    const ChessMove move = st_info.prev_move;
 
     // restore unrestorable data
-    pos_bbs[EN_PASSANTE] = rmd.enp_bb;
-    rev_moves            = rmd.rev_move_clock;
-    castle_r             = rmd.castle_r;
+    pos_bbs[EN_PASSANTE] = st_info.prev_enp_bb;
+    rev_move_count       = st_info.prev_rev_move_count;
+    castle_r             = st_info.prev_castle_r;
 
     // swap stm back to who made the move
     stm = !stm;
@@ -398,8 +373,6 @@ void Position::unmake_last()
     }
 }
 
-const ChessMove& Position::last_move() const { return unmake_stack.back().move; }
-
 // try to make pseudo legal move.
 // If move is legal, make the move and return true.
 // If move is not legal, return false.
@@ -407,7 +380,7 @@ bool Position::try_make_move(const ChessMove pseudo_legal)
 {
     make_move(pseudo_legal);
     // if the side that moved is in check, it's illegal
-    if (is_check(!side_to_move()))
+    if (sq_attacked(BB_LSB(pieces(!side_to_move(), KING)), side_to_move()))
     {
         unmake_last();
         return false;
@@ -548,10 +521,14 @@ Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
     }
 
     // ---- REVERSIBLE or HALF MOVE COUNTER ----
-    fen >> rev_moves;
+    fen >> rev_move_count;
 
     // ---- FULL MOVE COUNTER ----
     fen >> full_moves;
+
+    // now we must add a state info for the startpos (are these values okay?)
+    state_info_stack.emplace_back(ChessMove{}, 0, castle_r, BB_ZERO);
+    state_info_stack.back().is_check = sq_attacked(BB_LSB(pieces(stm, KING)), !stm);
 }
 
 str Position::FEN() const
@@ -641,7 +618,7 @@ str Position::FEN() const
     }
 
     // --- HALF/REVERSIBLE MOVES ---
-    fen << ' ' << rev_moves << ' ';
+    fen << ' ' << rev_move_count << ' ';
 
     // --- FULL MOVE COUNTER ---
     fen << full_moves;

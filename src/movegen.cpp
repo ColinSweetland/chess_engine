@@ -36,6 +36,8 @@ move_list Position::pseudo_legal_moves() const
     const DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
     const int pawn_promo_rank = PAWN_PROMO_RANK(stm);
 
+    bool check = is_check();
+
     bitboard p_single = bb_pawn_single_moves(pawns, occ, stm);
     bitboard p_double = bb_pawn_double_moves(p_single, occ, stm);
     bitboard p_att_e  = bb_pawn_attacks_e(pawns, pawn_capturable, stm);
@@ -256,7 +258,6 @@ move_list Position::pseudo_legal_moves() const
     CASTLE_RIGHT CR_KS = stm ? CR_BKS : CR_WKS;
     CASTLE_RIGHT CR_QS = stm ? CR_BQS : CR_WQS;
 
-    bool check = is_check(stm);
     // kingside
     if (!check && has_cr(CR_KS))
     {
