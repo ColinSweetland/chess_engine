@@ -10,12 +10,12 @@
 
 /* This file will define the basic types used in the engine */
 
-// alias for stdlib string
+// shorter alias for stdlib string
 using str = std::string;
 
 using bitboard = std::uint64_t;
 
-// 0-63 square on bitboard, from a1 to h8. -1 used for no square
+// 0-63 square on bitboard, from a1 to h8. -1 sometimes used for no square
 using square = std::int8_t;
 
 enum COLOR
@@ -86,5 +86,7 @@ enum CASTLE_RIGHT
     CR_ANY = CR_WQS | CR_WKS | CR_BQS | CR_BKS
 };
 
+// unit for evaluation. 100 = value of a pawn.
+using centipawn = int32_t;
 
 #endif // TYPES_INCL
