@@ -1,6 +1,7 @@
 #ifndef CHESS_MOVE_INCL
 #define CHESS_MOVE_INCL
 
+#include <algorithm>
 #include <iostream>
 #include <stdint.h>
 
@@ -71,6 +72,8 @@ class ChessMove
 
     // prints out moveinfo, useful for debugging
     void dump_info() const;
+
+    int score_for_ordering() const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return out << m.to_str(); }
@@ -91,6 +94,11 @@ struct rev_move_data
 };
 
 using move_list = std::vector<ChessMove>;
+
+inline void order_moves(move_list& ml)
+{
+    std::sort(ml.begin(), ml.end(), [](auto m1, auto m2) { return m1.score_for_ordering() > m2.score_for_ordering(); });
+}
 
 using scored_move = std::pair<ChessMove, int32_t>;
 

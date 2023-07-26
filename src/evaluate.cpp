@@ -17,7 +17,11 @@ static scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alp
 
         return std::make_pair(pos.last_move(), eval);
     }
+
     move_list ml = pos.pseudo_legal_moves();
+
+    // pre order moves for earlier cutoffs
+    order_moves(ml);
 
     // maximizing player
     if (pos.side_to_move() == WHITE)

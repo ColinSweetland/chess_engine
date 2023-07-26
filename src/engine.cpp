@@ -209,9 +209,13 @@ void Engine::uci_loop()
             pos.dump_move_history();
 
         else if (cmd_tokens[0] == "moveinfo")
-            for (auto m : pos.legal_moves())
-                m.dump_info();
+        {
+            auto moves = pos.legal_moves();
+            order_moves(moves);
 
+            for (auto m : moves)
+                m.dump_info();
+        }
         else if (cmd_tokens[0] == "perft")
         {
             int perft_depth = std::stoi(cmd_tokens[1]);
