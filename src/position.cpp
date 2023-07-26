@@ -155,10 +155,10 @@ bool Position::sq_attacked(square sq, COLOR attacking_color) const
     assert(VALID_SQ(sq));
 
     // opposite of how att pawns move
-    int pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
+    DIR pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
 
-    bitboard potential_pawn_atts = GEN_SHIFT(BB_SQ(sq), static_cast<DIR>(pawn_att_dir + EAST)) & ~BB_FILE_A;
-    potential_pawn_atts |= GEN_SHIFT(BB_SQ(sq), static_cast<DIR>(pawn_att_dir + WEST)) & ~BB_FILE_H;
+    bitboard potential_pawn_atts = GEN_SHIFT(BB_SQ(sq), pawn_att_dir + EAST) & ~BB_FILE_A;
+    potential_pawn_atts |= GEN_SHIFT(BB_SQ(sq), pawn_att_dir + WEST) & ~BB_FILE_H;
 
     // check for pawn attackers
     if (potential_pawn_atts & pieces(attacking_color, PAWN))
@@ -209,7 +209,7 @@ bool Position::is_check(COLOR c) const
 
     assert(VALID_SQ(kng_square));
 
-    return sq_attacked(kng_square, static_cast<COLOR>(!c));
+    return sq_attacked(kng_square, !c);
 }
 
 // this is quite slow because we make and unmake all moves
@@ -308,7 +308,7 @@ void Position::make_move(ChessMove move)
         }
 
         // remove the captured piece
-        remove_piece(static_cast<COLOR>(!stm), cap_piece, cap_square);
+        remove_piece(!stm, cap_piece, cap_square);
 
         // captures are not reversible
         rev_moves = 0;
@@ -337,7 +337,7 @@ void Position::make_move(ChessMove move)
     move_and_change_piece(stm, move.get_moved_piece(), move.get_after_move_piece(), move.get_orig(), move.get_dest());
 
     // now it's the other side's turn
-    stm = static_cast<COLOR>(!stm);
+    stm = !stm;
 }
 
 void Position::unmake_last()
@@ -353,7 +353,7 @@ void Position::unmake_last()
     castle_r             = rmd.castle_r;
 
     // swap stm back to who made the move
-    stm = static_cast<COLOR>(!stm);
+    stm = !stm;
 
     // if the move was made by black, decrement
     full_moves -= stm;
@@ -373,7 +373,7 @@ void Position::unmake_last()
         }
 
         // restore captured piece
-        place_piece(static_cast<COLOR>(!stm), cap_piece, cap_sq);
+        place_piece(!stm, cap_piece, cap_sq);
     }
     else if (move.is_castle())
     {
@@ -407,7 +407,7 @@ bool Position::try_make_move(const ChessMove pseudo_legal)
 {
     make_move(pseudo_legal);
     // if the side that moved is in check, it's illegal
-    if (is_check(static_cast<COLOR>(!side_to_move())))
+    if (is_check(!side_to_move()))
     {
         unmake_last();
         return false;

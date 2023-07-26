@@ -1,6 +1,8 @@
 #ifndef TYPES_INCL
 #define TYPES_INCL
 
+#include "util.hpp"
+
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -23,6 +25,9 @@ enum COLOR
     BLACK    = 1
 };
 
+// color flip with just ! and no static_cast
+constexpr COLOR operator!(COLOR c) { return static_cast<COLOR>(!util::to_underlying(c)); }
+
 // direction on the board, from white's point of view
 enum DIR
 {
@@ -37,7 +42,13 @@ enum DIR
     SOUTHWEST = SOUTH + WEST,
 };
 
-inline DIR PAWN_PUSH_DIR(COLOR c) { return c ? SOUTH : NORTH; }
+// add directions with + operator and no static cast
+constexpr DIR operator+(DIR l, DIR r) { return static_cast<DIR>(util::to_underlying(l) + util::to_underlying(r)); }
+
+// use unary - to flip direction (e.g. north to south)
+constexpr DIR operator-(DIR d) { return static_cast<DIR>(-util::to_underlying(d)); };
+
+constexpr DIR PAWN_PUSH_DIR(COLOR c) { return c ? SOUTH : NORTH; }
 
 enum PIECE
 {

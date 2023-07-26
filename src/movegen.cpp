@@ -30,7 +30,7 @@ move_list Position::pseudo_legal_moves() const
     const bitboard occ   = pieces();
     const bitboard pawns = pieces(stm, PAWN);
 
-    const bitboard pawn_capturable  = pieces(static_cast<COLOR>(!stm)) | pieces(EN_PASSANTE);
+    const bitboard pawn_capturable  = pieces(!stm) | pieces(EN_PASSANTE);
     const bitboard moveable_squares = ~pieces(stm);
 
     const DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
@@ -267,8 +267,7 @@ move_list Position::pseudo_legal_moves() const
         bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
 
         // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(kng_sq + EAST, static_cast<COLOR>(!stm))
-                     || sq_attacked(kng_sq + (EAST * 2), static_cast<COLOR>(!stm));
+        bool attacked = sq_attacked(kng_sq + EAST, !stm) || sq_attacked(kng_sq + (EAST * 2), !stm);
 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
@@ -282,8 +281,7 @@ move_list Position::pseudo_legal_moves() const
 
         bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
 
-        bool attacked = sq_attacked(kng_sq + WEST, static_cast<COLOR>(!stm))
-                     || sq_attacked(kng_sq + (WEST * 2), static_cast<COLOR>(!stm));
+        bool attacked = sq_attacked(kng_sq + WEST, !stm) || sq_attacked(kng_sq + (WEST * 2), !stm);
 
         if (spaces_free & !attacked)
             pl_moves.emplace_back(KING, kng_sq, kng_sq + (WEST * 2));
@@ -540,14 +538,14 @@ const bitboard& bb_knight_moves(square sq) { return knight_lookup[sq]; }
 // 1. attacks
 bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(moving) + WEST);
+    DIR attack_dir = PAWN_PUSH_DIR(moving) + WEST;
 
     return GEN_SHIFT(pawns, attack_dir) & attackable & w_mask;
 }
 
 bitboard bb_pawn_attacks_e(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    DIR attack_dir = static_cast<DIR>(PAWN_PUSH_DIR(moving) + EAST);
+    DIR attack_dir = PAWN_PUSH_DIR(moving) + EAST;
 
     return GEN_SHIFT(pawns, attack_dir) & attackable & e_mask;
 }
