@@ -7,9 +7,6 @@ set -u
 #   and makes obviously good ones. (e.g. plays the correct move when checkmate in 1)
 #
 
-# make sure current directory is PROJECTROOT/tests instead of directory script was ran from
-cd -P -- "$(dirname -- "$0")" || exit 2
-
 if [ -z "${1-}" ]
 then
     echo "usage: ${0} [engine executable to test]"

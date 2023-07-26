@@ -4,9 +4,6 @@ set -u
 #       This test compares the output of our 'perftdiv' command to stockfish's 
 #       'go perft' command, to ensure our movegenerator is working
 
-# make sure current directory is PROJECTROOT/tests -- instead of directory script was ran from
-cd -P -- "$(dirname -- "$0")" || exit 2
-
 if [ -z "${1-}" ]
 then
     echo "usage: ${0} [engine executable to test]"
@@ -17,7 +14,7 @@ engine_exe=${1}
 
 engine_output_tf=$(mktemp /tmp/perft_compare_XXXXXXX)
 
-stockf_exe="./stockfish"
+stockf_exe=$(readlink -f ~/Misc/chess_engines/stockfish)
 stockf_output_tf=$(mktemp /tmp/perft_compare_XXXXXXX)
 
 diff_output_tf=$(mktemp /tmp/perft_compare_XXXXXXX)
