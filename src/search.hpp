@@ -2,5 +2,6 @@
 #define SEARCH_INCL
 #include "evaluate.hpp"
 
-scored_move alpha_beta_search(Position& pos, uint8_t depth, centipawn alpha = INT32_MIN, centipawn beta = INT32_MAX);
+centipawn negamax_search(Position& pos, uint8_t depth, centipawn alpha = Engine::NEGATIVE_INF_EVAL,
+                         centipawn beta = Engine::POSITIVE_INF_EVAL);
 #endif // SEARCH_INCL
