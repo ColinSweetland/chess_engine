@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <sstream>
 
+#include "bitboard.hpp"
 #include "chessmove.hpp"
 #include "engine.hpp"
 #include "evaluate.hpp"
@@ -207,14 +208,28 @@ void Engine::uci_loop()
             pos.unmake_last();
             std::cout << pos;
         }
+        else if (cmd_tokens[0] == "checkmask")
+        {
+            print_bb(create_check_mask(pos));
+        }
+        else if (cmd_tokens[0] == "checkers")
+        {
+            print_bb(pos.get_checkers_bb());
+        }
         else if (cmd_tokens[0] == "dumphist")
             pos.dump_move_history();
 
-        else if (cmd_tokens[0] == "moveinfo")
+        else if (cmd_tokens[0] == "lminfo")
         {
             auto moves = pos.legal_moves();
             order_moves(moves);
-
+            for (auto m : moves)
+                m.dump_info();
+        }
+        else if (cmd_tokens[0] == "plminfo")
+        {
+            auto moves = pos.pseudo_legal_moves();
+            order_moves(moves);
             for (auto m : moves)
                 m.dump_info();
         }

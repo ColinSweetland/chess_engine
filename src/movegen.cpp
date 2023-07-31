@@ -13,37 +13,104 @@
 static constexpr bitboard e_mask = ~BB_FILE_A;
 static constexpr bitboard w_mask = ~BB_FILE_H;
 
+// create a check mask : limits squares we can generate moves to when in check.
+// the king never uses this to generate it's moves, but all other pieces do.
+bitboard create_check_mask(const Position& pos)
+{
+    bitboard checkers_bb = pos.get_checkers_bb();
+    bitboard occ         = pos.pieces();
+    square   kng_sq      = BB_LSB(pos.pieces(pos.side_to_move(), KING));
+    square   checker_sq  = BB_LSB(checkers_bb);
+    bitboard check_mask  = checkers_bb;
+
+    // not check: regular pseudolegal move generation to any square (full check mask)
+    if (!checkers_bb)
+        check_mask |= ~BB_ZERO;
+
+    // more than 1 attacker: generate only king moves (empty check mask)
+    else if (checkers_bb & (checkers_bb - 1))
+        check_mask &= BB_ZERO;
+
+    // single rook or bishop or queen : we must capture it, or block it or move king to a safe square
+    // we can rule out all squares that aren't along the direction they attack each other
+    // however, their are some false positives with this method.
+    // TODO: create a "squares between" lookup table. only 64x64 = 4096 entries
+    else if (checkers_bb & pos.pieces(ROOK))
+        check_mask |= bb_rook_moves(kng_sq, occ) & bb_rook_moves(checker_sq, occ);
+
+    else if (checkers_bb & pos.pieces(BISHOP))
+        check_mask |= bb_bishop_moves(kng_sq, occ) & bb_bishop_moves(checker_sq, occ);
+
+    else if (checkers_bb & pos.pieces(QUEEN))
+        check_mask |= bb_queen_moves(kng_sq, occ) & bb_queen_moves(checker_sq, occ);
+
+    // else there would be a single pawn or knight attacker, but since these aren't sliders, we must capture them or
+    // move king, so it's exactly the same as checkers_bb
+
+    return check_mask;
+}
+
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
 move_list Position::pseudo_legal_moves() const
 {
+    const bool check = is_check();
+
     move_list pl_moves{};
 
-    // info: https://chess.stackexchange.com/questions/23135/what-is-the-average-number-of-legal-moves-per-turn
-    // Average legal moves is about 30.
-    // Average legal moves at peak is about 40
-    // since we are generating pseudolegal, we need some extra space also. 50 sounds good
-    // so in the vast majority of normal positions, we will need 0 resizes
-    // in extreme positions we might need 1
-    // in most extreme we would need 2
-    pl_moves.reserve(50);
+    // guesstimated based on average legal moves
+    // https://chess.stackexchange.com/questions/23135/what-is-the-average-number-of-legal-moves-per-turn
+    pl_moves.reserve(check ? 16 : 48);
 
-    const bitboard occ   = pieces();
-    const bitboard pawns = pieces(stm, PAWN);
+    // check mask has all bits set if not check, else only squares that could attack the king
+    // it is applied to all moves, to make movegeneration faster in check, even though it's still pseudolegal
+    // generation
+    const bitboard check_mask = create_check_mask(*this);
 
-    const bitboard pawn_capturable  = pieces(!stm) | pieces(EN_PASSANTE);
+    const bitboard occ              = pieces();
     const bitboard moveable_squares = ~pieces(stm);
+
+    // --- KING ---
+
+    // there will always be exactly 1 king
+    const bitboard kng_bb = pieces(stm, KING);
+    const square   kng_sq = BB_LSB(kng_bb);
+
+    // note: doesn't respect the check mask
+    bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
+    while (kng_moves)
+    {
+        square dest_sq = BB_LSB(kng_moves);
+        BB_UNSET_LSB(kng_moves);
+
+        PIECE captured = piece_at_sq(dest_sq);
+
+        pl_moves.emplace_back(KING, kng_sq, dest_sq, captured);
+    }
+
+    // early exit if more than one checker (no other piece can move legally)
+    if (check_mask == BB_ZERO)
+    {
+        pl_moves.shrink_to_fit();
+        return pl_moves;
+    }
+
+    // --- PAWNS ---
+
+    const bitboard pawns           = pieces(stm, PAWN);
+    const bitboard pawn_capturable = pieces(!stm) | pieces(EN_PASSANTE);
 
     const DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
     const int pawn_promo_rank = PAWN_PROMO_RANK(stm);
 
-    bool check = is_check();
-
     bitboard p_single = bb_pawn_single_moves(pawns, occ, stm);
-    bitboard p_double = bb_pawn_double_moves(p_single, occ, stm);
-    bitboard p_att_e  = bb_pawn_attacks_e(pawns, pawn_capturable, stm);
-    bitboard p_att_w  = bb_pawn_attacks_w(pawns, pawn_capturable, stm);
+    bitboard p_double = bb_pawn_double_moves(p_single, occ, stm) & check_mask;
 
-    // --- PAWNS ---
+    // since double moves are generated from single moves,
+    // must be applied after
+    p_single &= check_mask;
+
+    bitboard p_att_e = bb_pawn_attacks_e(pawns, pawn_capturable, stm) & check_mask;
+    bitboard p_att_w = bb_pawn_attacks_w(pawns, pawn_capturable, stm) & check_mask;
 
     // single pawn pushes
     while (p_single != BB_ZERO)
@@ -143,15 +210,15 @@ move_list Position::pseudo_legal_moves() const
 
     // --- KNIGHTS ---
 
-    bitboard kn       = pieces(stm, KNIGHT);
-    bitboard kn_moves = BB_ZERO;
+    bitboard kn = pieces(stm, KNIGHT);
+    bitboard kn_moves;
 
     while (kn != BB_ZERO)
     {
         square orig_sq = BB_LSB(kn);
         BB_UNSET_LSB(kn);
 
-        kn_moves = bb_knight_moves(orig_sq) & moveable_squares;
+        kn_moves = bb_knight_moves(orig_sq) & moveable_squares & check_mask;
 
         while (kn_moves != BB_ZERO)
         {
@@ -166,15 +233,15 @@ move_list Position::pseudo_legal_moves() const
 
     // --- BISHOPS ---
 
-    bitboard bsh       = pieces(stm, BISHOP);
-    bitboard bsh_moves = BB_ZERO;
+    bitboard bsh = pieces(stm, BISHOP);
+    bitboard bsh_moves;
 
     while (bsh != BB_ZERO)
     {
         square orig_sq = BB_LSB(bsh);
         BB_UNSET_LSB(bsh);
 
-        bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares;
+        bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (bsh_moves != BB_ZERO)
         {
@@ -189,15 +256,15 @@ move_list Position::pseudo_legal_moves() const
 
     // --- ROOKS ---
 
-    bitboard rk       = pieces(stm, ROOK);
-    bitboard rk_moves = BB_ZERO;
+    bitboard rk = pieces(stm, ROOK);
+    bitboard rk_moves;
 
     while (rk != BB_ZERO)
     {
         square orig_sq = BB_LSB(rk);
         BB_UNSET_LSB(rk);
 
-        rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares;
+        rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (rk_moves != BB_ZERO)
         {
@@ -214,14 +281,14 @@ move_list Position::pseudo_legal_moves() const
 
     bitboard qn = pieces(stm, QUEEN);
 
-    bitboard qn_moves = BB_ZERO;
+    bitboard qn_moves;
 
     while (qn != BB_ZERO)
     {
         square orig_sq = BB_LSB(qn);
         BB_UNSET_LSB(qn);
 
-        qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares;
+        qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (qn_moves != BB_ZERO)
         {
@@ -232,25 +299,6 @@ move_list Position::pseudo_legal_moves() const
 
             pl_moves.emplace_back(QUEEN, orig_sq, dest_sq, captured);
         }
-    }
-
-    // --- KING ---
-
-    bitboard kng = pieces(stm, KING);
-
-    // there will always be exactly 1 king
-    square kng_sq = BB_LSB(kng);
-
-    bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
-
-    while (kng_moves != BB_ZERO)
-    {
-        square dest_sq = BB_LSB(kng_moves);
-        BB_UNSET_LSB(kng_moves);
-
-        PIECE captured = piece_at_sq(dest_sq);
-
-        pl_moves.emplace_back(KING, kng_sq, dest_sq, captured);
     }
 
     // --- CASTLING ---
@@ -265,7 +313,7 @@ move_list Position::pseudo_legal_moves() const
         // aka the kingside rook can attack our king
         int kingside_rooksq = stm == BLACK ? 63 : 7;
 
-        bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng) > 0;
+        bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng_bb) > 0;
 
         // the spaces the king moves through also can't be attacked
         bool attacked = sq_attacked(kng_sq + EAST, !stm) || sq_attacked(kng_sq + (EAST * 2), !stm);
@@ -280,7 +328,7 @@ move_list Position::pseudo_legal_moves() const
     {
         int queenside_rooksq = stm == BLACK ? 56 : 0;
 
-        bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng) > 0;
+        bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng_bb) > 0;
 
         bool attacked = sq_attacked(kng_sq + WEST, !stm) || sq_attacked(kng_sq + (WEST * 2), !stm);
 

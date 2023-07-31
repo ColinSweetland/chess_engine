@@ -19,7 +19,8 @@ struct state_info
     unsigned int prev_castle_r{0};
     bitboard     prev_enp_bb{0};
 
-    bool is_check;
+    bitboard checkers_bb{0};
+
     // need a constructor to use emplace_back
     state_info(ChessMove cm, unsigned int rmc, unsigned int pcr, bitboard pebb)
         : prev_move(cm), prev_rev_move_count(rmc), prev_castle_r(pcr), prev_enp_bb(pebb)
@@ -54,6 +55,8 @@ class Position
 
     str castle_right_str() const;
 
+    void update_checkers_bb();
+
   public:
     // default to the starting position
     Position(str fenstr = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -78,7 +81,10 @@ class Position
 
     move_list legal_moves();
 
-    inline bool      is_check() const { return state_info_stack.back().is_check; }
+    const bitboard& get_checkers_bb() const { return state_info_stack.back().checkers_bb; }
+
+    bool is_check() const { return get_checkers_bb(); }
+
     const ChessMove& last_move() const { return state_info_stack.back().prev_move; }
 
     void make_move(const ChessMove c);

@@ -203,6 +203,30 @@ bool Position::sq_attacked(square sq, COLOR attacking_color) const
     return bsh_attkrs;
 }
 
+void Position::update_checkers_bb()
+{
+    const bitboard occ    = pieces();
+    const square   kng_sq = BB_LSB(pieces(stm, KING));
+
+    bitboard& checkers_bb = state_info_stack.back().checkers_bb;
+
+    // pawn attackers (treating our king as a friendly pawn, with only pawns capturable)
+    checkers_bb = bb_pawn_attacks_e(pieces(stm, KING), pieces(PAWN), stm);
+    checkers_bb |= bb_pawn_attacks_w(pieces(stm, KING), pieces(PAWN), stm);
+
+    // knight attackers
+    checkers_bb |= bb_knight_moves(kng_sq) & pieces(KNIGHT);
+
+    // rookwise attackers
+    checkers_bb |= bb_rook_moves(kng_sq, occ) & (pieces(ROOK) | pieces(QUEEN));
+
+    // bishopwise attackers
+    checkers_bb |= bb_bishop_moves(kng_sq, occ) & (pieces(BISHOP) | pieces(QUEEN));
+
+    // only enemy attackers
+    checkers_bb &= pieces(!stm);
+}
+
 void Position::make_move(ChessMove move)
 {
     assert(move.get_orig() != move.get_dest());
@@ -312,7 +336,7 @@ void Position::make_move(ChessMove move)
 
     // *** update state_info ***
 
-    state_info_stack.back().is_check = sq_attacked(BB_LSB(pieces(stm, KING)), !stm);
+    update_checkers_bb();
 }
 
 void Position::unmake_last()
@@ -528,7 +552,7 @@ Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
 
     // now we must add a state info for the startpos (are these values okay?)
     state_info_stack.emplace_back(ChessMove{}, 0, castle_r, BB_ZERO);
-    state_info_stack.back().is_check = sq_attacked(BB_LSB(pieces(stm, KING)), !stm);
+    update_checkers_bb();
 }
 
 str Position::FEN() const

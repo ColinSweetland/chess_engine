@@ -3,6 +3,7 @@
 
 #include "bitboard.hpp"
 #include "chessmove.hpp"
+#include "position.hpp"
 #include "types.hpp"
 
 //--------------MOVES-------------------
@@ -38,5 +39,7 @@ bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, CO
 bitboard bb_pawn_single_moves(const bitboard& pawns, const bitboard& blockers, COLOR side_to_move);
 
 bitboard bb_pawn_double_moves(const bitboard& single_moves, const bitboard& blockers, COLOR side_to_move);
+
+bitboard create_check_mask(const Position& pos);
 
 #endif // MOVEGEN_INCL
