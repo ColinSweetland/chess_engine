@@ -17,10 +17,10 @@ void print_bb(bitboard bb)
 
         for (int file = 1; file <= 8; file++)
         {
-            int square = rankfile_to_sq(rank, file);
+            int square = rf_to_sq(rank, file);
 
             // print X for 1, . for 0
-            std::cout << (BB_IS_SET_AT(bb, square) ? " X" : " .");
+            std::cout << (bb_is_set_at_sq(bb, square) ? " X" : " .");
         }
 
         std::cout << "\n";

@@ -3,7 +3,6 @@
 
 #include "chessmove.hpp"
 #include "position.hpp"
-#include "types.hpp"
 
 namespace Engine
 {
@@ -13,8 +12,6 @@ namespace Engine
 void set_interactive();
 
 void uci_loop();
-
-
 
 } // namespace Engine
 

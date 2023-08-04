@@ -1,18 +1,22 @@
 #include "chessmove.hpp"
+#include "./types/pieces.hpp"
+
+#include <algorithm>
+#include <iostream>
 
 void ChessMove::dump_info() const
 {
     std::cout << "MOVE: " << to_str();
-    std::cout << "\tMOV P: " << piece_to_str.at(get_moved_piece());
-    std::cout << "\tCAP P: " << piece_to_str.at(get_captured_piece());
-    std::cout << "\t\tPRO P: " << piece_to_str.at(get_promo_piece());
+    std::cout << "\tMOV P: " << piece_to_str(get_moved_piece());
+    std::cout << "\tCAP P: " << piece_to_str(get_captured_piece());
+    std::cout << "\t\tPRO P: " << piece_to_str(get_promo_piece());
     std::cout << "\t\tCASTL: " << (is_castle() ? "T" : "F");
     std::cout << "\tSCORE: " << score_for_ordering() << "\n";
 }
 
-const int CAPTURE_VALUE   = 40;
-const int PROMOTION_VALUE = 80;
-const int CASTLE_VALUE    = 20;
+constexpr int CAPTURE_VALUE   = 40;
+constexpr int PROMOTION_VALUE = 80;
+constexpr int CASTLE_VALUE    = 20;
 
 // good test positions:
 
@@ -57,4 +61,9 @@ int ChessMove::score_for_ordering() const
     }
 
     return score;
+}
+
+void order_moves(move_list& ml)
+{
+    std::sort(ml.begin(), ml.end(), [](auto m1, auto m2) { return m1.score_for_ordering() > m2.score_for_ordering(); });
 }

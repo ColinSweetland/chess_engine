@@ -3,20 +3,20 @@
 
 #include <sstream>
 
-#include "bitboard.hpp"
-// #include "movegen.h"
+#include "./types/bitboard.hpp"
 #include "chessmove.hpp"
+#include "gameinfo.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
-#include "types.hpp"
+#include "types/pieces.hpp"
 
 // formats castlerights to string like 'KQkq' or 'Kkq' or '-'
-str Position::castle_right_str() const
+std::string Position::castle_right_str() const
 {
     if (!has_cr(CR_ANY))
         return "-";
 
-    str cr_str;
+    std::string cr_str;
 
     if (has_cr(CR_WKS))
         cr_str.push_back('K');
@@ -33,11 +33,6 @@ str Position::castle_right_str() const
 // the << operator will print the position, nicely formatted
 std::ostream& operator<<(std::ostream& out, const Position& p)
 {
-    square sq;
-    char   piece_char;
-
-    square enp_sq = BB_LSB(p.pos_bbs[EN_PASSANTE]);
-
     // print out 8 rows of pieces
     for (int rank = 8; rank >= 1; rank--)
     {
@@ -46,21 +41,15 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
 
         for (int file = 1; file <= 8; file++)
         {
-            sq         = rankfile_to_sq(rank, file);
-            piece_char = piece_to_char.at(p.piece_at_sq(sq));
-
-            // if piece is white -> capital letter
-            if (p.color_at_sq(sq) == WHITE)
-                piece_char = std::toupper(piece_char);
-
-            out << ' ' << piece_char << ' ';
+            square sq = rf_to_sq(rank, file);
+            out << ' ' << colorpiece_to_char({p.color_at_sq(sq), p.piece_at_sq(sq)}) << ' ';
         }
 
         // print other game info
         switch (rank)
         {
         case (7):
-            out << "\tFull Moves: " << p.full_moves << " Rev Moves: " << p.rev_move_count;
+            out << "\tFull Moves: " << p.full_move_count() << " Rev Moves: " << p.rev_move_count();
             break;
 
         case (5):
@@ -70,15 +59,15 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
         case (3):
             out << "\tEn Passante Sq: ";
 
-            if (enp_sq != -1)
-                out << SQ_TO_STR(enp_sq);
+            if (p.m_enp_sq != -1)
+                out << sq_str(p.m_enp_sq);
             else
                 out << '-';
 
             break;
 
         case (1):
-            out << "\t" << (piece_to_str.at(p.side_to_move())) << " to move";
+            out << "\t" << (p.side_to_move() ? "BLACK" : "WHITE") << " to move";
             break;
         }
     }
@@ -93,26 +82,29 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
 
 void Position::dump_move_history() const
 {
-    for (auto st_info : state_info_stack)
+    for (auto st_info : m_state_info_stack)
         std::cout << st_info.prev_move << '\n';
 }
 
 void Position::remove_piece(COLOR c, PIECE p, square sq)
 {
-    assert(BB_IS_SET_AT(pos_bbs[c], sq));
-    assert(BB_IS_SET_AT(pos_bbs[p], sq));
+    assert(bb_is_set_at_sq(m_color_bbs[c], sq));
+    assert(bb_is_set_at_sq(m_piece_bbs[c][p], sq));
     assert(p != NO_PIECE);
-    BB_UNSET(pos_bbs[c], sq);
-    BB_UNSET(pos_bbs[p], sq);
+    bb_unset_sq(m_color_bbs[c], sq);
+    bb_unset_sq(m_piece_bbs[c][p], sq);
 }
 
 void Position::place_piece(COLOR c, PIECE p, square sq)
 {
-    assert(!BB_IS_SET_AT(pos_bbs[c], sq));
-    assert(!BB_IS_SET_AT(pos_bbs[p], sq));
+    assert(!bb_is_set_at_sq(m_color_bbs[c], sq));
+    assert(!bb_is_set_at_sq(m_color_bbs[!c], sq));
+    assert(!bb_is_set_at_sq(m_piece_bbs[c][p], sq));
+    assert(!bb_is_set_at_sq(m_piece_bbs[!c][p], sq));
     assert(p != NO_PIECE);
-    BB_SET(pos_bbs[c], sq);
-    BB_SET(pos_bbs[p], sq);
+    assert(is_valid(sq));
+    bb_set_sq(m_color_bbs[c], sq);
+    bb_set_sq(m_piece_bbs[c][p], sq);
 }
 
 void Position::move_piece(COLOR c, PIECE p, square orig, square dest)
@@ -131,7 +123,7 @@ PIECE Position::piece_at_sq(square sq) const
 {
     for (int p = PAWN; p <= KING; p++)
     {
-        if (BB_IS_SET_AT(pieces(p), sq))
+        if (bb_is_set_at_sq(pieces(static_cast<PIECE>(p)), sq))
         {
             return static_cast<PIECE>(p);
         }
@@ -142,9 +134,9 @@ PIECE Position::piece_at_sq(square sq) const
 
 COLOR Position::color_at_sq(square sq) const
 {
-    if (BB_IS_SET_AT(pieces(WHITE), sq))
+    if (bb_is_set_at_sq(pieces(WHITE), sq))
         return WHITE;
-    else if (BB_IS_SET_AT(pieces(BLACK), sq))
+    else if (bb_is_set_at_sq(pieces(BLACK), sq))
         return BLACK;
     else
         return NO_COLOR;
@@ -152,13 +144,13 @@ COLOR Position::color_at_sq(square sq) const
 
 bool Position::sq_attacked(square sq, COLOR attacking_color) const
 {
-    assert(VALID_SQ(sq));
+    assert(is_valid(sq));
 
     // opposite of how att pawns move
-    DIR pawn_att_dir = -PAWN_PUSH_DIR(attacking_color);
+    DIR pawn_att_dir = -push_dir(attacking_color);
 
-    bitboard potential_pawn_atts = GEN_SHIFT(BB_SQ(sq), pawn_att_dir + EAST) & ~BB_FILE_A;
-    potential_pawn_atts |= GEN_SHIFT(BB_SQ(sq), pawn_att_dir + WEST) & ~BB_FILE_H;
+    bitboard potential_pawn_atts = gen_shift(bb_from_sq(sq), pawn_att_dir + EAST) & ~BB_FILE_A;
+    potential_pawn_atts |= gen_shift(bb_from_sq(sq), pawn_att_dir + WEST) & ~BB_FILE_H;
 
     // check for pawn attackers
     if (potential_pawn_atts & pieces(attacking_color, PAWN))
@@ -180,51 +172,36 @@ bool Position::sq_attacked(square sq, COLOR attacking_color) const
 
     // check for rook / queen attackers
 
-    // rook moves from kings square
-    bitboard rook_attkrs = bb_rook_moves(sq, pieces());
-
-    // opposite pieces
-    rook_attkrs &= pieces(attacking_color);
-
-    // Rook or Queen
-    rook_attkrs &= pieces(ROOK) | pieces(QUEEN);
-
-    if (rook_attkrs)
+    // rookwise attackers
+    if (bb_rook_moves(sq, pieces()) & (pieces(attacking_color, ROOK) | pieces(attacking_color, QUEEN)))
     {
         return true;
     }
 
-    // Bishop or Queen
-    bitboard bsh_attkrs = bb_bishop_moves(sq, pieces());
-
-    bsh_attkrs &= pieces(attacking_color);
-    bsh_attkrs &= pieces(BISHOP) | pieces(QUEEN);
-
-    return bsh_attkrs;
+    // bishop attackers
+    return bb_bishop_moves(sq, pieces()) & (pieces(attacking_color, BISHOP) | pieces(attacking_color, QUEEN));
 }
 
 void Position::update_checkers_bb()
 {
     const bitboard occ    = pieces();
-    const square   kng_sq = BB_LSB(pieces(stm, KING));
+    const square   kng_sq = lsb(pieces(m_stm, KING));
+    const COLOR    enemy  = !side_to_move();
 
-    bitboard& checkers_bb = state_info_stack.back().checkers_bb;
+    bitboard& checkers_bb = m_state_info_stack.back().checkers_bb;
 
     // pawn attackers (treating our king as a friendly pawn, with only pawns capturable)
-    checkers_bb = bb_pawn_attacks_e(pieces(stm, KING), pieces(PAWN), stm);
-    checkers_bb |= bb_pawn_attacks_w(pieces(stm, KING), pieces(PAWN), stm);
+    checkers_bb = bb_pawn_attacks_e(pieces(m_stm, KING), pieces(enemy, PAWN), m_stm);
+    checkers_bb |= bb_pawn_attacks_w(pieces(m_stm, KING), pieces(enemy, PAWN), m_stm);
 
     // knight attackers
-    checkers_bb |= bb_knight_moves(kng_sq) & pieces(KNIGHT);
+    checkers_bb |= bb_knight_moves(kng_sq) & pieces(enemy, KNIGHT);
 
     // rookwise attackers
-    checkers_bb |= bb_rook_moves(kng_sq, occ) & (pieces(ROOK) | pieces(QUEEN));
+    checkers_bb |= bb_rook_moves(kng_sq, occ) & (pieces(enemy, ROOK) | pieces(enemy, QUEEN));
 
     // bishopwise attackers
-    checkers_bb |= bb_bishop_moves(kng_sq, occ) & (pieces(BISHOP) | pieces(QUEEN));
-
-    // only enemy attackers
-    checkers_bb &= pieces(!stm);
+    checkers_bb |= bb_bishop_moves(kng_sq, occ) & (pieces(enemy, BISHOP) | pieces(enemy, QUEEN));
 }
 
 void Position::make_move(ChessMove move)
@@ -232,43 +209,43 @@ void Position::make_move(ChessMove move)
     assert(move.get_orig() != move.get_dest());
 
     // store reversible move data
-    state_info_stack.emplace_back(move, rev_move_count, castle_r, pos_bbs[EN_PASSANTE]);
+    m_state_info_stack.emplace_back(move, m_rev_move_count, m_castle_r, m_enp_sq);
 
     // increment rev move counter (will be reset later if it needs to)
-    rev_move_count += 1;
+    m_rev_move_count += 1;
 
     // increase full moves (only if black)
-    full_moves += stm;
+    m_full_moves += m_stm;
 
     // en passante is set if it's a double push, else cleared
     if (move.is_double_push())
-        pos_bbs[EN_PASSANTE] = BB_SQ(move.get_orig() + PAWN_PUSH_DIR(stm));
+        m_enp_sq = move.get_orig() + push_dir(m_stm);
     else
-        pos_bbs[EN_PASSANTE] = BB_ZERO;
+        m_enp_sq = -1;
 
     switch (move.get_moved_piece())
     {
     // moving pawns is not reversible
     case PAWN:
-        rev_move_count = 0;
+        m_rev_move_count = 0;
         break;
 
     // moving king always unsets castle rights for moving side
     case KING:
-        remove_cr(stm ? CR_BKQS : CR_WKQS);
+        remove_cr(m_stm ? CR_BKQS : CR_WKQS);
         break;
 
     // if we move rook from starting square, we must unset castle rights
     case ROOK:
     {
-        square ks_rooksq = stm ? 63 : 7;
-        square qs_rooksq = stm ? 56 : 0;
+        square ks_rooksq = m_stm ? 63 : 7;
+        square qs_rooksq = m_stm ? 56 : 0;
 
         if (move.get_orig() == ks_rooksq)
-            remove_cr(stm ? CR_BKS : CR_WKS);
+            remove_cr(m_stm ? CR_BKS : CR_WKS);
 
         else if (move.get_orig() == qs_rooksq)
-            remove_cr(stm ? CR_BQS : CR_WQS);
+            remove_cr(m_stm ? CR_BQS : CR_WQS);
         break;
     }
     // no other piece needs special treatment
@@ -287,52 +264,52 @@ void Position::make_move(ChessMove move)
         if (cap_piece == EN_PASSANTE)
         {
             cap_piece = PAWN;
-            cap_square -= PAWN_PUSH_DIR(stm);
+            cap_square -= push_dir(m_stm);
         }
         // if we capture enemy rook from starting square, we must unset castle rights
         if (move.get_captured_piece() == ROOK)
         {
-            square enemy_ks_rooksq = stm ? 7 : 63;
-            square enemy_qs_rooksq = stm ? 0 : 56;
+            square enemy_ks_rooksq = m_stm ? 7 : 63;
+            square enemy_qs_rooksq = m_stm ? 0 : 56;
 
             if (move.get_dest() == enemy_ks_rooksq)
-                remove_cr(stm ? CR_WKS : CR_BKS);
+                remove_cr(m_stm ? CR_WKS : CR_BKS);
 
             else if (move.get_dest() == enemy_qs_rooksq)
-                remove_cr(stm ? CR_WQS : CR_BQS);
+                remove_cr(m_stm ? CR_WQS : CR_BQS);
         }
 
         // remove the captured piece
-        remove_piece(!stm, cap_piece, cap_square);
+        remove_piece(!m_stm, cap_piece, cap_square);
 
         // captures are not reversible
-        rev_move_count = 0;
+        m_rev_move_count = 0;
     }
     else if (move.is_castle())
     {
         square rook_sq;
         square rook_dest;
         // kingside castle
-        if (FILE_FROM_SQ(move.get_dest()) == 7)
+        if (file_num(move.get_dest()) == 7)
         {
-            rook_sq   = stm ? 63 : 7;
+            rook_sq   = m_stm ? 63 : 7;
             rook_dest = move.get_dest() + WEST;
         }
         else // queenside castle
         {
-            rook_sq   = stm ? 56 : 0;
+            rook_sq   = m_stm ? 56 : 0;
             rook_dest = move.get_dest() + EAST;
         }
 
         // we only have to move the rook, since we will move the king
-        move_piece(stm, ROOK, rook_sq, rook_dest);
+        move_piece(m_stm, ROOK, rook_sq, rook_dest);
     }
 
     // finally move the moved piece
-    move_and_change_piece(stm, move.get_moved_piece(), move.get_after_move_piece(), move.get_orig(), move.get_dest());
+    move_and_change_piece(m_stm, move.get_moved_piece(), move.get_after_move_piece(), move.get_orig(), move.get_dest());
 
     // now it's the other side's turn
-    stm = !stm;
+    m_stm = !m_stm;
 
     // *** update state_info ***
 
@@ -341,24 +318,24 @@ void Position::make_move(ChessMove move)
 
 void Position::unmake_last()
 {
-    const state_info st_info = state_info_stack.back();
-    state_info_stack.pop_back();
+    const state_info st_info = m_state_info_stack.back();
+    m_state_info_stack.pop_back();
 
     const ChessMove move = st_info.prev_move;
 
     // restore unrestorable data
-    pos_bbs[EN_PASSANTE] = st_info.prev_enp_bb;
-    rev_move_count       = st_info.prev_rev_move_count;
-    castle_r             = st_info.prev_castle_r;
+    m_enp_sq         = st_info.prev_enp_sq;
+    m_rev_move_count = st_info.prev_rev_move_count;
+    m_castle_r       = st_info.prev_castle_r;
 
     // swap stm back to who made the move
-    stm = !stm;
+    m_stm = !m_stm;
 
     // if the move was made by black, decrement
-    full_moves -= stm;
+    m_full_moves -= m_stm;
 
     // move piece back and maybe unpromote
-    move_and_change_piece(stm, move.get_after_move_piece(), move.get_moved_piece(), move.get_dest(), move.get_orig());
+    move_and_change_piece(m_stm, move.get_after_move_piece(), move.get_moved_piece(), move.get_dest(), move.get_orig());
 
     if (move.is_capture())
     {
@@ -367,12 +344,12 @@ void Position::unmake_last()
 
         if (move.is_en_passante())
         {
-            cap_sq -= PAWN_PUSH_DIR(stm);
+            cap_sq -= push_dir(m_stm);
             cap_piece = PAWN;
         }
 
         // restore captured piece
-        place_piece(!stm, cap_piece, cap_sq);
+        place_piece(!m_stm, cap_piece, cap_sq);
     }
     else if (move.is_castle())
     {
@@ -380,20 +357,20 @@ void Position::unmake_last()
         square rook_dest;
 
         // kingside castle
-        if (FILE_FROM_SQ(move.get_dest()) == 7)
+        if (file_num(move.get_dest()) == 7)
         {
-            rook_orig = stm ? 63 : 7;
+            rook_orig = m_stm ? 63 : 7;
             rook_dest = move.get_dest() + WEST;
         }
         // queenside castle
         else
         {
-            rook_orig = stm ? 56 : 0;
+            rook_orig = m_stm ? 56 : 0;
             rook_dest = move.get_dest() + EAST;
         }
 
         // restore rook to it's original square
-        move_piece(stm, ROOK, rook_dest, rook_orig);
+        move_piece(m_stm, ROOK, rook_dest, rook_orig);
     }
 }
 
@@ -404,7 +381,7 @@ bool Position::try_make_move(const ChessMove pseudo_legal)
 {
     make_move(pseudo_legal);
     // if the side that moved is in check, it's illegal
-    if (sq_attacked(BB_LSB(pieces(!side_to_move(), KING)), side_to_move()))
+    if (sq_attacked(lsb(pieces(!side_to_move(), KING)), side_to_move()))
     {
         unmake_last();
         return false;
@@ -416,75 +393,66 @@ bool Position::try_make_move(const ChessMove pseudo_legal)
 // Forsyth Edwards Notation is a common string based representation of a chess position
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
+Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0}, m_castle_r{0}
 {
     std::istringstream fen{fenstr};
 
     // Fen strings start at top left position
-    int bb_file = 1;
-    int bb_rank = 8;
+    int file = 1;
+    int rank = 8;
 
     char fc;
 
-    square sq = rankfile_to_sq(bb_rank, bb_file);
+    square sq = rf_to_sq(rank, file);
 
     // board position section
     while (sq != 7)
     {
-
-        sq = rankfile_to_sq(bb_rank, bb_file);
+        sq = rf_to_sq(rank, file);
         fen >> fc;
-
-        // printf("SQ: %d R: %d F: %d C: %c\n", sq, bb_rank, bb_file, fc);
 
         switch (fc)
         {
         // if we find a number: move num - 1 squares
         case '1' ... '8':
-            bb_file += fc - '1';
+            file += fc - '1';
 
             // ugly hack -> if the last entry in the section is
             // a number, then break loop. seems to work
-            if (bb_rank == 1 && bb_file >= 8)
+            if (rank == 1 && file >= 8)
                 sq = 7;
+
             break;
 
         // end of row, move down rank and to first file
         case '/':
-            bb_rank -= 1;
-            bb_file = 0;
+            rank -= 1;
+            file = 0;
             break;
 
         // a letter indicates a piece
         case 'A' ... 'Z':
         case 'a' ... 'z':
-            // if fc is not a real piece char -> throw error
-            assert(char_to_piece.count(tolower(fc)));
-
-            {
-                // black is lowercase - we use ! because isupper/lower
-                // can return any truthy int - we always want 1
-                COLOR piece_color = static_cast<COLOR>(!isupper(fc));
-                PIECE piece_type  = char_to_piece.at(tolower(fc));
-
-                place_piece(piece_color, piece_type, sq);
-            }
-
-            break;
+        {
+            ColorPiece char_color_piece = char_to_colorpiece(fc);
+            assert(char_color_piece.piece != NO_PIECE && char_color_piece.color != NO_COLOR);
+            place_piece(char_color_piece.color, char_color_piece.piece, sq);
+        }
+        break;
 
         default:
             // we should never have any other characters in the board section of the FEN string
             assert(false);
         }
 
-        bb_file++;
+        file++;
     }
 
     // ---- which side moves ----
 
     fen >> fc;
 
-    stm = fc == 'b' ? BLACK : WHITE;
+    m_stm = fc == 'b' ? BLACK : WHITE;
 
     // ---- castling rights ----
     // '-' indicates nobody can castle
@@ -534,30 +502,33 @@ Position::Position(const str fenstr) : pos_bbs{0}, castle_r{0}
     if (fc != '-')
     {
         // FILE LETTER
-        int enp_sq = fc - 'a';
+        square enp_sq = fc - 'a';
 
         // RANK NUM
         fen >> fc;
-
         enp_sq += (fc - '1') * 8;
 
-        pos_bbs[EN_PASSANTE] = BB_SQ(enp_sq);
+        m_enp_sq = enp_sq;
+    }
+    else
+    {
+        m_enp_sq = -1;
     }
 
     // ---- REVERSIBLE or HALF MOVE COUNTER ----
-    fen >> rev_move_count;
+    fen >> m_rev_move_count;
 
     // ---- FULL MOVE COUNTER ----
-    fen >> full_moves;
+    fen >> m_full_moves;
 
     // now we must add a state info for the startpos (are these values okay?)
-    state_info_stack.emplace_back(ChessMove{}, 0, castle_r, BB_ZERO);
+    m_state_info_stack.emplace_back(ChessMove{}, 0, m_castle_r, BB_ZERO);
     update_checkers_bb();
 }
 
-str Position::FEN() const
+std::string Position::FEN() const
 {
-    str fen_buf{15, ' '};
+    std::string fen_buf{15, ' '};
 
     std::ostringstream fen{fen_buf};
 
@@ -583,26 +554,18 @@ str Position::FEN() const
                 fen.put(empty_space_count + '0');
                 empty_space_count = 0;
             }
-            char piece_char = piece_to_char.at(sq_piece);
 
-            // if piece is white, make uppercase
-            if (color_at_sq(sq) == WHITE)
-            {
-                piece_char = toupper(piece_char);
-            }
-
-            fen.put(piece_char);
+            fen.put(colorpiece_to_char({color_at_sq(sq), sq_piece}));
         }
 
         // last file
-        if (FILE_FROM_SQ(sq) == 8)
+        if (file_num(sq) == 8)
         {
             // if we have empty space at the end of the line..
             // we must write it, since it can't carry to the next line.
             if (empty_space_count)
             {
                 fen.put(empty_space_count + '0');
-
                 empty_space_count = 0;
             }
 
@@ -618,9 +581,9 @@ str Position::FEN() const
     }
 
     // --- SIDE TO MOVE ---
-    fen << ' ';
-    fen << piece_to_char.at(stm);
-    fen << ' ';
+    fen.put(' ');
+    fen.put(m_stm ? 'b' : 'w');
+    fen.put(' ');
 
     // --- CASTLE RIGHTS ---
     fen << castle_right_str();
@@ -629,23 +592,21 @@ str Position::FEN() const
 
     fen.put(' ');
 
-    int enp_sq = BB_LSB(pos_bbs[EN_PASSANTE]);
-
     // no enpassante available
-    if (enp_sq < 0)
+    if (m_enp_sq < 0)
     {
         fen.put('-');
     }
     else
     {
-        fen << SQ_TO_STR(enp_sq);
+        fen << sq_str(m_enp_sq);
     }
 
     // --- HALF/REVERSIBLE MOVES ---
-    fen << ' ' << rev_move_count << ' ';
+    fen << ' ' << m_rev_move_count << ' ';
 
     // --- FULL MOVE COUNTER ---
-    fen << full_moves;
+    fen << m_full_moves;
 
     return fen.str();
 }

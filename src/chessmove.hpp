@@ -1,12 +1,9 @@
 #ifndef CHESS_MOVE_INCL
 #define CHESS_MOVE_INCL
 
-#include <algorithm>
-#include <iostream>
-#include <stdint.h>
-
-#include "bitboard.hpp"
-#include "types.hpp"
+#include "./types/bitboard.hpp"
+#include "./types/pieces.hpp"
+#include <vector>
 
 class ChessMove
 {
@@ -54,23 +51,23 @@ class ChessMove
 
     inline bool is_castle() const
     {
-        return m_moved_piece == KING && FILE_FROM_SQ(m_orig_sq) == 5
-            && (FILE_FROM_SQ(m_dest_sq) == 3 || FILE_FROM_SQ(m_dest_sq) == 7);
+        return m_moved_piece == KING && file_num(m_orig_sq) == 5
+            && (file_num(m_dest_sq) == 3 || file_num(m_dest_sq) == 7);
     }
 
     inline bool is_double_push() const
     {
-        return m_moved_piece == PAWN && abs(RANK_FROM_SQ(m_orig_sq) - RANK_FROM_SQ(m_dest_sq)) == 2;
+        return m_moved_piece == PAWN && abs(rank_num(m_orig_sq) - rank_num(m_dest_sq)) == 2;
     }
     inline bool is_en_passante() const { return m_cap_piece == EN_PASSANTE; }
 
     // ie initialized, but not valid
     inline bool is_null() { return m_moved_piece == NO_PIECE; }
 
-    inline str to_str() const
+    inline std::string to_str() const
     {
-        str temp = SQ_TO_STR(m_orig_sq) + SQ_TO_STR(m_dest_sq);
-        return is_promo() ? temp + piece_to_char.at(m_aftermove_piece) : temp;
+        std::string temp = sq_str(m_orig_sq) + sq_str(m_dest_sq);
+        return is_promo() ? temp + piece_to_char(m_aftermove_piece) : temp;
     }
 
     // prints out moveinfo, useful for debugging
@@ -83,10 +80,7 @@ inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return 
 
 using move_list = std::vector<ChessMove>;
 
-inline void order_moves(move_list& ml)
-{
-    std::sort(ml.begin(), ml.end(), [](auto m1, auto m2) { return m1.score_for_ordering() > m2.score_for_ordering(); });
-}
+void order_moves(move_list& ml);
 
 using scored_move = std::pair<ChessMove, int32_t>;
 

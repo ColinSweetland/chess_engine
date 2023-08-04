@@ -1,12 +1,12 @@
 #include "evaluate.hpp"
-#include "bitboard.hpp"
 #include "chessmove.hpp"
-#include "movegen.hpp"
 #include "position.hpp"
 #include "search.hpp"
-#include "types.hpp"
+#include "types/bitboard.hpp"
 
 #include <cstdint>
+
+using Engine::centipawn;
 
 static centipawn piece_value_eval(Position& pos)
 {
@@ -17,9 +17,9 @@ static centipawn piece_value_eval(Position& pos)
     for (int p = PAWN; p < KING; p++)
     {
         // side to move (positive) piece score
-        eval += Engine::piece_to_cp_score(static_cast<PIECE>(p)) * BB_POPCNT(pos.pieces(stm, static_cast<PIECE>(p)));
+        eval += Engine::piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(stm, static_cast<PIECE>(p)));
         // enemy (negative) piece score
-        eval -= Engine::piece_to_cp_score(static_cast<PIECE>(p)) * BB_POPCNT(pos.pieces(!stm, static_cast<PIECE>(p)));
+        eval -= Engine::piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(!stm, static_cast<PIECE>(p)));
     }
 
     return eval;
@@ -106,19 +106,18 @@ centipawn piece_sq_table_eval(Position& pos)
     for (square bs_sq = 0; bs_sq < 64; bs_sq++)
     {
         // since the psqt are indexed "upside down" we must mirror the white sq
-        square ws_sq = MIRROR_VERT_SQ(bs_sq);
+        square ws_sq = mirror_vertically(bs_sq);
 
         PIECE ws_sq_piece = pos.piece_at_sq(ws_sq);
         PIECE bs_sq_piece = pos.piece_at_sq(bs_sq);
 
         // This isn't efficient, we call color_at_sq 2 times more than we need to
-
-        if (ws_sq_piece != NO_PIECE && pos.color_at_sq(ws_sq) == WHITE)
+        if (ws_sq_piece != KING && pos.color_at_sq(ws_sq) == WHITE)
             // we still index into the table using blackside sq so evaluations match
-            eval += piece_sq_tables[ws_sq_piece - PAWN][bs_sq];
+            eval += piece_sq_tables[ws_sq_piece][bs_sq];
 
-        if (bs_sq_piece != NO_PIECE && pos.color_at_sq(bs_sq) == BLACK)
-            eval -= piece_sq_tables[bs_sq_piece - PAWN][bs_sq];
+        if (bs_sq_piece != KING && pos.color_at_sq(bs_sq) == BLACK)
+            eval -= piece_sq_tables[bs_sq_piece][bs_sq];
     }
 
     // presently, eval is pos for white, negative for black
@@ -138,8 +137,9 @@ ChessMove Engine::best_move(Position& pos, uint8_t depth)
     ChessMove best_move;
     centipawn best_evaluation = NEGATIVE_INF_EVAL;
 
-    // no need to order the moves: can't have cutoff at the root node
     move_list psl = pos.pseudo_legal_moves();
+
+    order_moves(psl);
 
     for (ChessMove move : psl)
     {

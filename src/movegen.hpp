@@ -1,10 +1,12 @@
 #ifndef MOVEGEN_INCL
 #define MOVEGEN_INCL
 
-#include "bitboard.hpp"
-#include "chessmove.hpp"
-#include "position.hpp"
-#include "types.hpp"
+#include "./types/bitboard.hpp"
+
+// forwards
+class ChessMove;
+class Position;
+enum COLOR : int;
 
 //--------------MOVES-------------------
 

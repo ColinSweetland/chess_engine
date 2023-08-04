@@ -1,14 +1,19 @@
 #ifndef EVAL_INCL
 #define EVAL_INCL
 
+#include "./types/pieces.hpp"
 #include "chessmove.hpp"
-#include "position.hpp"
-#include "types.hpp"
 
 #include <cstdint>
 
+class ChessMove;
+class Position;
+
 namespace Engine
 {
+
+// unit for evaluation. 100 = value of a pawn.
+using centipawn = int32_t;
 
 constexpr centipawn NEGATIVE_INF_EVAL = (INT32_MIN + 5);
 constexpr centipawn POSITIVE_INF_EVAL = (INT32_MAX - 5);
@@ -22,21 +27,9 @@ constexpr centipawn DRAW_EVAL = 0;
 
 constexpr centipawn piece_to_cp_score(PIECE p)
 {
-    switch (p)
-    {
-    case PAWN:
-        return 100;
-    case KNIGHT:
-        return 300;
-    case BISHOP:
-        return 320;
-    case ROOK:
-        return 500;
-    case QUEEN:
-        return 900;
-    default:
-        exit(1);
-    }
+    //  NONE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN
+    constexpr centipawn valuelookup[] = {0, 100, 310, 325, 500, 900};
+    return valuelookup[p];
 };
 
 // tempo bonus: their should be a bonus for reaching a positive position at an earlier depth

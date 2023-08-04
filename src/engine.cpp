@@ -2,23 +2,23 @@
 #include <cassert>
 #include <cstdint>
 #include <sstream>
+#include <string>
 
-#include "bitboard.hpp"
+#include "./types/bitboard.hpp"
 #include "chessmove.hpp"
 #include "engine.hpp"
 #include "evaluate.hpp"
+#include "gameinfo.hpp"
 #include "movegen.hpp"
 #include "perft.hpp"
 #include "position.hpp"
-#include "types.hpp"
-#include "util.hpp"
 
 static bool interactive = false;
 
 void Engine::set_interactive() { interactive = true; }
 
 // send "info string" message - omit "info string" if interactive
-static void send_info(str message)
+static void send_info(std::string message)
 {
     if (!interactive)
         std::cout << "info string ";
@@ -38,7 +38,7 @@ static void uci_cmd()
 const uint8_t DEFAULT_SEARCH_DEPTH = 4;
 
 // go -> find best move
-static void go_cmd(Position& pos, std::vector<str>& tokens)
+static void go_cmd(Position& pos, std::vector<std::string>& tokens)
 {
     uint8_t depth = DEFAULT_SEARCH_DEPTH;
 
@@ -52,18 +52,18 @@ static void go_cmd(Position& pos, std::vector<str>& tokens)
 }
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)
-static const ChessMove UCI_move(Position& pos, str move_string)
+static const ChessMove UCI_move(Position& pos, std::string move_string)
 {
     const int origin_file = move_string[0] - 'a' + 1;
     const int origin_rank = move_string[1] - '1' + 1;
     const int dest_file   = move_string[2] - 'a' + 1;
     const int dest_rank   = move_string[3] - '1' + 1;
 
-    const int promo_rank = PAWN_PROMO_RANK(pos.side_to_move());
+    const int promo_rank = promo_rank_num(pos.side_to_move());
 
-    const square origin = rankfile_to_sq(origin_rank, origin_file);
+    const square origin = rf_to_sq(origin_rank, origin_file);
     assert(origin >= 0 && origin <= 63);
-    const square dest = rankfile_to_sq(dest_rank, dest_file);
+    const square dest = rf_to_sq(dest_rank, dest_file);
     assert(dest >= 0 && dest <= 63);
 
     const PIECE moved_p = pos.piece_at_sq(origin);
@@ -80,14 +80,14 @@ static const ChessMove UCI_move(Position& pos, str move_string)
             capture_p = EN_PASSANTE;
         // promo
         else if (dest_rank == promo_rank)
-            after_move_p = char_to_piece.at(move_string[4]);
+            after_move_p = char_to_colorpiece(move_string[4]).piece;
     }
 
     return {moved_p, after_move_p, origin, dest, capture_p};
 }
 
 // position -> set current position
-static void position_cmd(Position& pos, std::vector<str>& tokens)
+static void position_cmd(Position& pos, std::vector<std::string>& tokens)
 {
     size_t i = 3;
 
@@ -95,7 +95,7 @@ static void position_cmd(Position& pos, std::vector<str>& tokens)
     // -> position fen (6 tokens) = 8
     if (tokens.size() >= 8 && tokens[1] == "fen")
     {
-        str fen;
+        std::string fen;
         // collect tokens until "moves" or out of tokens
         for (i = 2; i < tokens.size(); i++)
         {
@@ -134,11 +134,11 @@ void Engine::uci_loop()
 {
     Position pos;
 
-    str input_buf(MAX_UCI_INPUT_SIZE, ' ');
+    std::string input_buf(MAX_UCI_INPUT_SIZE, ' ');
 
-    str token;
+    std::string token;
 
-    std::vector<str> cmd_tokens;
+    std::vector<std::string> cmd_tokens;
 
     if (interactive)
         send_info("running interactively");

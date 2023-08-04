@@ -3,11 +3,11 @@
 #include <cstddef>
 #include <x86intrin.h>
 
-#include "bitboard.hpp"
+#include "./types/bitboard.hpp"
 #include "chessmove.hpp"
+#include "gameinfo.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
-#include "types.hpp"
 
 // when we shift east/west, wrapping can happen. To avoid this, we have to mask a row
 static constexpr bitboard e_mask = ~BB_FILE_A;
@@ -19,9 +19,10 @@ bitboard create_check_mask(const Position& pos)
 {
     bitboard checkers_bb = pos.get_checkers_bb();
     bitboard occ         = pos.pieces();
-    square   kng_sq      = BB_LSB(pos.pieces(pos.side_to_move(), KING));
-    square   checker_sq  = BB_LSB(checkers_bb);
+    square   kng_sq      = lsb(pos.pieces(pos.side_to_move(), KING));
+    square   checker_sq  = lsb(checkers_bb);
     bitboard check_mask  = checkers_bb;
+    COLOR    enemy         = !pos.side_to_move();
 
     // not check: regular pseudolegal move generation to any square (full check mask)
     if (!checkers_bb)
@@ -35,13 +36,13 @@ bitboard create_check_mask(const Position& pos)
     // we can rule out all squares that aren't along the direction they attack each other
     // however, their are some false positives with this method.
     // TODO: create a "squares between" lookup table. only 64x64 = 4096 entries
-    else if (checkers_bb & pos.pieces(ROOK))
+    else if (checkers_bb & pos.pieces(enemy, ROOK))
         check_mask |= bb_rook_moves(kng_sq, occ) & bb_rook_moves(checker_sq, occ);
 
-    else if (checkers_bb & pos.pieces(BISHOP))
+    else if (checkers_bb & pos.pieces(enemy, BISHOP))
         check_mask |= bb_bishop_moves(kng_sq, occ) & bb_bishop_moves(checker_sq, occ);
 
-    else if (checkers_bb & pos.pieces(QUEEN))
+    else if (checkers_bb & pos.pieces(enemy, QUEEN))
         check_mask |= bb_queen_moves(kng_sq, occ) & bb_queen_moves(checker_sq, occ);
 
     // else there would be a single pawn or knight attacker, but since these aren't sliders, we must capture them or
@@ -67,23 +68,20 @@ move_list Position::pseudo_legal_moves() const
     const bitboard check_mask = create_check_mask(*this);
 
     const bitboard occ              = pieces();
-    const bitboard moveable_squares = ~pieces(stm);
+    const bitboard moveable_squares = ~pieces(m_stm);
 
     // --- KING ---
 
     // there will always be exactly 1 king
-    const bitboard kng_bb = pieces(stm, KING);
-    const square   kng_sq = BB_LSB(kng_bb);
+    const bitboard kng_bb = pieces(m_stm, KING);
+    const square   kng_sq = lsb(kng_bb);
 
     // note: doesn't respect the check mask
     bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
     while (kng_moves)
     {
-        square dest_sq = BB_LSB(kng_moves);
-        BB_UNSET_LSB(kng_moves);
-
-        PIECE captured = piece_at_sq(dest_sq);
-
+        square dest_sq  = pop_lsb(kng_moves);
+        PIECE  captured = piece_at_sq(dest_sq);
         pl_moves.emplace_back(KING, kng_sq, dest_sq, captured);
     }
 
@@ -96,32 +94,33 @@ move_list Position::pseudo_legal_moves() const
 
     // --- PAWNS ---
 
-    const bitboard pawns           = pieces(stm, PAWN);
-    const bitboard pawn_capturable = pieces(!stm) | pieces(EN_PASSANTE);
+    const bitboard pawns           = pieces(m_stm, PAWN);
+    bitboard       pawn_capturable = pieces(!m_stm);
 
-    const DIR pawn_push_dir   = PAWN_PUSH_DIR(stm);
-    const int pawn_promo_rank = PAWN_PROMO_RANK(stm);
+    if (is_valid(m_enp_sq))
+        pawn_capturable |= bb_from_sq(m_enp_sq);
 
-    bitboard p_single = bb_pawn_single_moves(pawns, occ, stm);
-    bitboard p_double = bb_pawn_double_moves(p_single, occ, stm) & check_mask;
+    const DIR pawn_push_dir       = push_dir(m_stm);
+    const int pawn_promo_rank_num = promo_rank_num(m_stm);
+
+    bitboard p_single = bb_pawn_single_moves(pawns, occ, m_stm);
+    bitboard p_double = bb_pawn_double_moves(p_single, occ, m_stm) & check_mask;
 
     // since double moves are generated from single moves,
     // must be applied after
     p_single &= check_mask;
 
-    bitboard p_att_e = bb_pawn_attacks_e(pawns, pawn_capturable, stm) & check_mask;
-    bitboard p_att_w = bb_pawn_attacks_w(pawns, pawn_capturable, stm) & check_mask;
+    bitboard p_att_e = bb_pawn_attacks_e(pawns, pawn_capturable, m_stm) & check_mask;
+    bitboard p_att_w = bb_pawn_attacks_w(pawns, pawn_capturable, m_stm) & check_mask;
 
     // single pawn pushes
     while (p_single != BB_ZERO)
     {
-        // square of a move
-        square dest_sq = BB_LSB(p_single);
-        BB_UNSET_LSB(p_single);
+        square dest_sq = pop_lsb(p_single);
 
         square orig_sq = dest_sq - pawn_push_dir;
 
-        if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        if (rank_num(dest_sq) == pawn_promo_rank_num)
         {
             pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq);
             pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq);
@@ -137,25 +136,17 @@ move_list Position::pseudo_legal_moves() const
     // double pawn pushes
     while (p_double != BB_ZERO)
     {
-        // square of a move
-        square dest_sq = BB_LSB(p_double);
-        BB_UNSET_LSB(p_double);
-
+        square dest_sq = pop_lsb(p_double);
         square orig_sq = dest_sq - (pawn_push_dir * 2);
-
         pl_moves.emplace_back(PAWN, orig_sq, dest_sq);
     }
 
     // pawn attacks east
     while (p_att_e != BB_ZERO)
     {
-        // square of a move
-        square dest_sq = BB_LSB(p_att_e);
-        BB_UNSET_LSB(p_att_e);
-
-        square orig_sq = dest_sq - (pawn_push_dir + EAST);
-
-        PIECE captured = piece_at_sq(dest_sq);
+        square dest_sq  = pop_lsb(p_att_e);
+        square orig_sq  = dest_sq - (pawn_push_dir + EAST);
+        PIECE  captured = piece_at_sq(dest_sq);
 
         // en passante capture
         if (captured == NO_PIECE)
@@ -163,7 +154,7 @@ move_list Position::pseudo_legal_moves() const
             pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
         }
         // promotion capture
-        else if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        else if (rank_num(dest_sq) == pawn_promo_rank_num)
         {
             pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
             pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
@@ -180,13 +171,9 @@ move_list Position::pseudo_legal_moves() const
     // pawn attacks west
     while (p_att_w != BB_ZERO)
     {
-        // square of a move
-        square dest_sq = BB_LSB(p_att_w);
-        BB_UNSET_LSB(p_att_w);
-
-        square orig_sq = dest_sq - (pawn_push_dir + WEST);
-
-        PIECE captured = piece_at_sq(dest_sq);
+        square dest_sq  = pop_lsb(p_att_w);
+        square orig_sq  = dest_sq - (pawn_push_dir + WEST);
+        PIECE  captured = piece_at_sq(dest_sq);
 
         // en passante capture
         if (captured == NO_PIECE)
@@ -194,7 +181,7 @@ move_list Position::pseudo_legal_moves() const
             pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
         }
         // promotion capture
-        else if (RANK_FROM_SQ(dest_sq) == pawn_promo_rank)
+        else if (rank_num(dest_sq) == pawn_promo_rank_num)
         {
             pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
             pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
@@ -210,113 +197,87 @@ move_list Position::pseudo_legal_moves() const
 
     // --- KNIGHTS ---
 
-    bitboard kn = pieces(stm, KNIGHT);
-    bitboard kn_moves;
+    bitboard kn = pieces(m_stm, KNIGHT);
 
     while (kn != BB_ZERO)
     {
-        square orig_sq = BB_LSB(kn);
-        BB_UNSET_LSB(kn);
-
-        kn_moves = bb_knight_moves(orig_sq) & moveable_squares & check_mask;
+        square   orig_sq  = pop_lsb(kn);
+        bitboard kn_moves = bb_knight_moves(orig_sq) & moveable_squares & check_mask;
 
         while (kn_moves != BB_ZERO)
         {
-            square dest_sq = BB_LSB(kn_moves);
-            BB_UNSET_LSB(kn_moves);
-
-            PIECE captured = piece_at_sq(dest_sq);
-
+            square dest_sq  = pop_lsb(kn_moves);
+            PIECE  captured = piece_at_sq(dest_sq);
             pl_moves.emplace_back(KNIGHT, orig_sq, dest_sq, captured);
         }
     }
 
     // --- BISHOPS ---
 
-    bitboard bsh = pieces(stm, BISHOP);
-    bitboard bsh_moves;
+    bitboard bsh = pieces(m_stm, BISHOP);
 
     while (bsh != BB_ZERO)
     {
-        square orig_sq = BB_LSB(bsh);
-        BB_UNSET_LSB(bsh);
-
-        bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares & check_mask;
+        square   orig_sq   = pop_lsb(bsh);
+        bitboard bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (bsh_moves != BB_ZERO)
         {
-            square dest_sq = BB_LSB(bsh_moves);
-            BB_UNSET_LSB(bsh_moves);
-
-            PIECE captured = piece_at_sq(dest_sq);
-
+            square dest_sq  = pop_lsb(bsh_moves);
+            PIECE  captured = piece_at_sq(dest_sq);
             pl_moves.emplace_back(BISHOP, orig_sq, dest_sq, captured);
         }
     }
 
     // --- ROOKS ---
 
-    bitboard rk = pieces(stm, ROOK);
-    bitboard rk_moves;
+    bitboard rk = pieces(m_stm, ROOK);
 
     while (rk != BB_ZERO)
     {
-        square orig_sq = BB_LSB(rk);
-        BB_UNSET_LSB(rk);
-
-        rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares & check_mask;
+        square   orig_sq  = pop_lsb(rk);
+        bitboard rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (rk_moves != BB_ZERO)
         {
-            square dest_sq = BB_LSB(rk_moves);
-            BB_UNSET_LSB(rk_moves);
-
-            PIECE captured = piece_at_sq(dest_sq);
-
+            square dest_sq  = pop_lsb(rk_moves);
+            PIECE  captured = piece_at_sq(dest_sq);
             pl_moves.emplace_back(ROOK, orig_sq, dest_sq, captured);
         }
     }
 
     // --- QUEENS ---
 
-    bitboard qn = pieces(stm, QUEEN);
-
-    bitboard qn_moves;
-
+    bitboard qn = pieces(m_stm, QUEEN);
     while (qn != BB_ZERO)
     {
-        square orig_sq = BB_LSB(qn);
-        BB_UNSET_LSB(qn);
-
-        qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares & check_mask;
+        square   orig_sq  = pop_lsb(qn);
+        bitboard qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares & check_mask;
 
         while (qn_moves != BB_ZERO)
         {
-            square dest_sq = BB_LSB(qn_moves);
-            BB_UNSET_LSB(qn_moves);
-
-            PIECE captured = piece_at_sq(dest_sq);
-
+            square dest_sq  = pop_lsb(qn_moves);
+            PIECE  captured = piece_at_sq(dest_sq);
             pl_moves.emplace_back(QUEEN, orig_sq, dest_sq, captured);
         }
     }
 
     // --- CASTLING ---
 
-    CASTLE_RIGHT CR_KS = stm ? CR_BKS : CR_WKS;
-    CASTLE_RIGHT CR_QS = stm ? CR_BQS : CR_WQS;
+    CASTLE_RIGHT CR_KS = m_stm ? CR_BKS : CR_WKS;
+    CASTLE_RIGHT CR_QS = m_stm ? CR_BQS : CR_WQS;
 
     // kingside
     if (!check && has_cr(CR_KS))
     {
         // squares between rook and king must be free
         // aka the kingside rook can attack our king
-        int kingside_rooksq = stm == BLACK ? 63 : 7;
+        int kingside_rooksq = m_stm == BLACK ? 63 : 7;
 
         bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng_bb) > 0;
 
         // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(kng_sq + EAST, !stm) || sq_attacked(kng_sq + (EAST * 2), !stm);
+        bool attacked = sq_attacked(kng_sq + EAST, !m_stm) || sq_attacked(kng_sq + (EAST * 2), !m_stm);
 
         // if these conditions met, we can castle kingside
         if (spaces_free & !attacked)
@@ -326,11 +287,11 @@ move_list Position::pseudo_legal_moves() const
     // Queenside, see comments above
     if (!check && has_cr(CR_QS))
     {
-        int queenside_rooksq = stm == BLACK ? 56 : 0;
+        int queenside_rooksq = m_stm == BLACK ? 56 : 0;
 
         bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng_bb) > 0;
 
-        bool attacked = sq_attacked(kng_sq + WEST, !stm) || sq_attacked(kng_sq + (WEST * 2), !stm);
+        bool attacked = sq_attacked(kng_sq + WEST, !m_stm) || sq_attacked(kng_sq + (WEST * 2), !m_stm);
 
         if (spaces_free & !attacked)
             pl_moves.emplace_back(KING, kng_sq, kng_sq + (WEST * 2));
@@ -392,7 +353,7 @@ static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
         bitboard prop = ~blockers & dirmask;
 
         // the square the rook is on
-        bitboard r = BB_SQ(origin_sq);
+        bitboard r = bb_from_sq(origin_sq);
 
         // we fill this with valid moves until blocker
         bitboard flood = BB_ZERO;
@@ -401,11 +362,11 @@ static bitboard dumb7fill(square origin_sq, bitboard blockers, DIR* dirs)
         while (r)
         {
             flood |= r;
-            r = GEN_SHIFT(r, current_dir) & prop;
+            r = gen_shift(r, current_dir) & prop;
         }
 
         // shift one more time to get attacks/edges
-        flood = GEN_SHIFT(flood, current_dir) & dirmask;
+        flood = gen_shift(flood, current_dir) & dirmask;
 
         moves_bb |= flood;
     }
@@ -438,7 +399,7 @@ static constexpr std::array<const bitboard, 64> BISHOP_BLOCKER_MASK = {
 
 const bitboard& bb_bishop_moves(square sq, const bitboard& blockers)
 {
-    bitboard blocker_key = BB_PEXT(blockers, BISHOP_BLOCKER_MASK[sq]);
+    bitboard blocker_key = pext(blockers, BISHOP_BLOCKER_MASK[sq]);
     return BISHOP_MOVE_LOOKUP.at(sq).at(blocker_key);
 }
 
@@ -452,13 +413,13 @@ void init_bishop_table(void)
         bitboard potential_blocker_mask = BISHOP_BLOCKER_MASK[curr_sq];
 
         // we can have as many blockers as bits set
-        int max_blockers = BB_POPCNT(potential_blocker_mask);
+        int max_blockers = popcnt(potential_blocker_mask);
 
         // iterate through all combo of blockers in all relevant positions
-        for (bitboard blockers = BB_ZERO; blockers < BB_SQ(max_blockers); blockers++)
+        for (bitboard blockers = BB_ZERO; blockers < bb_from_sq(max_blockers); blockers++)
         {
             // this particular combo
-            bitboard blocker_set = BB_PDEP(blockers, potential_blocker_mask);
+            bitboard blocker_set = pdep(blockers, potential_blocker_mask);
 
             bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
 
@@ -507,7 +468,7 @@ constexpr std::array<const bitboard, 64> ROOK_BLOCKER_MASK = {
 
 const bitboard& bb_rook_moves(square sq, const bitboard& blockers)
 {
-    bitboard blocker_key = BB_PEXT(blockers, ROOK_BLOCKER_MASK[sq]);
+    bitboard blocker_key = pext(blockers, ROOK_BLOCKER_MASK[sq]);
     return ROOK_MOVE_LOOKUP.at(sq).at(blocker_key);
 }
 
@@ -521,13 +482,13 @@ void init_rook_table(void)
         bitboard potential_blocker_mask = ROOK_BLOCKER_MASK[curr_sq];
 
         // we can have as many blockers as bits set
-        int max_blockers = BB_POPCNT(potential_blocker_mask);
+        int max_blockers = popcnt(potential_blocker_mask);
 
         // iterate through all combo of blockers in all relevant positions
-        for (bitboard blockers = BB_ZERO; blockers < BB_SQ(max_blockers); blockers++)
+        for (bitboard blockers = BB_ZERO; blockers < bb_from_sq(max_blockers); blockers++)
         {
             // this particular combo
-            bitboard blocker_set = BB_PDEP(blockers, potential_blocker_mask);
+            bitboard blocker_set = pdep(blockers, potential_blocker_mask);
 
             bitboard moves = dumb7fill(curr_sq, blocker_set, dirs);
 
@@ -587,31 +548,31 @@ const bitboard& bb_knight_moves(square sq) { return knight_lookup[sq]; }
 // 1. attacks
 bitboard bb_pawn_attacks_w(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    DIR attack_dir = PAWN_PUSH_DIR(moving) + WEST;
+    DIR attack_dir = push_dir(moving) + WEST;
 
-    return GEN_SHIFT(pawns, attack_dir) & attackable & w_mask;
+    return gen_shift(pawns, attack_dir) & attackable & w_mask;
 }
 
 bitboard bb_pawn_attacks_e(const bitboard& pawns, const bitboard& attackable, COLOR moving)
 {
-    DIR attack_dir = PAWN_PUSH_DIR(moving) + EAST;
+    DIR attack_dir = push_dir(moving) + EAST;
 
-    return GEN_SHIFT(pawns, attack_dir) & attackable & e_mask;
+    return gen_shift(pawns, attack_dir) & attackable & e_mask;
 }
 
 // 2. Moves
 bitboard bb_pawn_single_moves(const bitboard& pawns, const bitboard& blockers, COLOR side_to_move)
 {
-    DIR move_dir = PAWN_PUSH_DIR(side_to_move);
+    DIR move_dir = push_dir(side_to_move);
 
-    return GEN_SHIFT(pawns, move_dir) & ~blockers;
+    return gen_shift(pawns, move_dir) & ~blockers;
 }
 
 bitboard bb_pawn_double_moves(const bitboard& single_moves, const bitboard& blockers, COLOR side_to_move)
 {
-    DIR move_dir = PAWN_PUSH_DIR(side_to_move);
+    DIR move_dir = push_dir(side_to_move);
 
     bitboard double_move_rank = side_to_move == BLACK ? BB_RANK_5 : BB_RANK_4;
 
-    return GEN_SHIFT(single_moves, move_dir) & ~blockers & double_move_rank;
+    return gen_shift(single_moves, move_dir) & ~blockers & double_move_rank;
 }

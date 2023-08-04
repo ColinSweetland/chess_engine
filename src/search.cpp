@@ -1,10 +1,11 @@
 
 #include "search.hpp"
-#include "chessmove.hpp"
 #include "evaluate.hpp"
 #include "position.hpp"
 
 #include <cstdint>
+
+using Engine::centipawn;
 
 // https://en.wikipedia.org/wiki/Negamax
 centipawn negamax_search(Position& pos, uint8_t depth, centipawn alpha, centipawn beta)

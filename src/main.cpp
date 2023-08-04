@@ -6,11 +6,8 @@
 // unix std header
 #include <unistd.h>
 
-#include "bitboard.hpp"
 #include "engine.hpp"
 #include "movegen.hpp"
-#include "position.hpp"
-#include "types.hpp"
 
 void init(void)
 {
