@@ -25,13 +25,15 @@ CXXFLAGS	+= -O3
 CXXFLAGS	+= -flto
 # native architechture
 CXXFLAGS	+= -march=native
+# disable assertions
+CXXFLAGS 	+= -DNDEBUG
 
 # add postfix to output
 EXE_POSTFIX += _release
 
 else # not optimized ('debug mode') 
-# least optimization
-CXXFLAGS	+= -O0
+# some optimization
+CXXFLAGS	+= -O1
 # most debug symbols
 CXXFLAGS 	+= -g3
 # sanitizers
