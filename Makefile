@@ -7,7 +7,7 @@ CXXFLAGS	:= -Wall -Wextra -Werror -Wpedantic
 CXXFLAGS	+= -Wno-gnu-case-range
 
 # C++ std
-CXXFLAGS	+= -std=c++14
+CXXFLAGS	+= -std=c++17
 
 # use bmi instruction set (currently required but should not be)
 CXXFLAGS	+= -mbmi2
