@@ -88,6 +88,7 @@ class Position
 
     inline const unsigned int& full_move_count() const { return m_full_moves; }
     inline const unsigned int& rev_move_count() const { return m_rev_move_count; }
+    inline square              en_passante_sq() const { return m_enp_sq; }
 
     PIECE piece_at_sq(square sq) const;
     COLOR color_at_sq(square sq) const;
