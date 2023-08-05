@@ -1,5 +1,6 @@
 // need for PEXT/PDEP
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <x86intrin.h>
 
@@ -8,6 +9,7 @@
 #include "gameinfo.hpp"
 #include "movegen.hpp"
 #include "position.hpp"
+#include "types/pieces.hpp"
 
 // when we shift east/west, wrapping can happen. To avoid this, we have to mask a row
 static constexpr bitboard e_mask = ~BB_FILE_A;
@@ -22,7 +24,7 @@ bitboard create_check_mask(const Position& pos)
     square   kng_sq      = lsb(pos.pieces(pos.side_to_move(), KING));
     square   checker_sq  = lsb(checkers_bb);
     bitboard check_mask  = checkers_bb;
-    COLOR    enemy         = !pos.side_to_move();
+    COLOR    enemy       = !pos.side_to_move();
 
     // not check: regular pseudolegal move generation to any square (full check mask)
     if (!checkers_bb)
@@ -51,6 +53,149 @@ bitboard create_check_mask(const Position& pos)
     return check_mask;
 }
 
+// returns a bitboard of moves for all pieces except pawn,
+// where bits set are bits the piece can move to
+template <PIECE piece_type> static bitboard moves_bb(const square orig_sq, const bitboard occupancy)
+{
+    static_assert(piece_type != PAWN, "pawn moves are generated elsewhere\n");
+
+    if constexpr (piece_type == KNIGHT)
+        return bb_knight_moves(orig_sq);
+    else if constexpr (piece_type == BISHOP)
+        return bb_bishop_moves(orig_sq, occupancy);
+    else if constexpr (piece_type == ROOK)
+        return bb_rook_moves(orig_sq, occupancy);
+    else if constexpr (piece_type == KING)
+        return bb_king_moves(orig_sq);
+    else
+        return bb_queen_moves(orig_sq, occupancy);
+}
+
+// generates pseudolegal moves of the piece type and adds them to ml
+template <PIECE piece_type>
+static void generate_moves(const Position& pos, move_list& ml, const bitboard moveable_squares, bitboard check_mask)
+{
+    static_assert(piece_type != EN_PASSANTE, "Can't Generate 'En Passante' Moves\n");
+
+    if constexpr (piece_type != PAWN)
+    {
+        bitboard p_bb = pos.pieces(pos.side_to_move(), piece_type);
+
+        while (p_bb != BB_ZERO)
+        {
+            square   orig_sq    = pop_lsb(p_bb);
+            bitboard p_moves_bb = moves_bb<piece_type>(orig_sq, pos.pieces()) & moveable_squares & check_mask;
+
+            while (p_moves_bb != BB_ZERO)
+            {
+                square dest_sq = pop_lsb(p_moves_bb);
+
+                PIECE captured = pos.piece_at_sq(dest_sq);
+                ml.emplace_back(piece_type, orig_sq, dest_sq, captured);
+            }
+        }
+
+        return;
+    }
+
+    // else : piece_type is PAWN -> Pawns have several special rules (e.g. promotion)
+    // TODO : make the pawn section cleaner
+
+    const bitboard pawns = pos.pieces(pos.side_to_move(), PAWN);
+
+    COLOR     friendly   = pos.side_to_move();
+    COLOR     enemy      = !friendly;
+    DIR       pushd      = push_dir(friendly);
+    const int promo_rank = promo_rank_num(friendly);
+    bitboard  attackable = pos.pieces(enemy);
+
+    if (pos.en_passante_sq() != -1)
+        attackable |= bb_from_sq(pos.en_passante_sq());
+
+    bitboard single_push = bb_pawn_single_moves(pawns, pos.pieces(), friendly);
+    bitboard double_push = bb_pawn_double_moves(single_push, pos.pieces(), friendly) & check_mask;
+    bitboard p_att_e     = bb_pawn_attacks_e(pawns, attackable, friendly) & check_mask;
+    bitboard p_att_w     = bb_pawn_attacks_w(pawns, attackable, friendly) & check_mask;
+    single_push &= check_mask;
+
+    // double pawn pushes -> can never be capture or promotion
+    while (double_push != BB_ZERO)
+    {
+        square dest_sq = pop_lsb(double_push);
+        square orig_sq = dest_sq - (pushd * 2);
+        ml.emplace_back(PAWN, orig_sq, dest_sq);
+    }
+
+    // single pawn pushes
+    while (single_push != BB_ZERO)
+    {
+        square dest_sq = pop_lsb(single_push);
+
+        square orig_sq = dest_sq - pushd;
+
+        if (rank_num(dest_sq) == promo_rank)
+        {
+            ml.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq);
+            ml.emplace_back(PAWN, BISHOP, orig_sq, dest_sq);
+            ml.emplace_back(PAWN, ROOK, orig_sq, dest_sq);
+            ml.emplace_back(PAWN, QUEEN, orig_sq, dest_sq);
+        }
+        else
+        {
+            ml.emplace_back(PAWN, orig_sq, dest_sq);
+        }
+    }
+
+    while (p_att_e != BB_ZERO)
+    {
+        square dest_sq  = pop_lsb(p_att_e);
+        square orig_sq  = dest_sq - (pushd + EAST);
+        PIECE  captured = pos.piece_at_sq(dest_sq);
+
+        // en passante capture
+        if (captured == NO_PIECE)
+        {
+            ml.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
+        }
+        // promotion capture
+        else if (rank_num(dest_sq) == promo_rank)
+        {
+            ml.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
+        }
+        // all others
+        else
+        {
+            ml.emplace_back(PAWN, orig_sq, dest_sq, captured);
+        }
+    }
+
+    while (p_att_w != BB_ZERO)
+    {
+        square dest_sq  = pop_lsb(p_att_w);
+        square orig_sq  = dest_sq - (pushd + WEST);
+        PIECE  captured = pos.piece_at_sq(dest_sq);
+
+        if (captured == NO_PIECE)
+        {
+            ml.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
+        }
+        else if (rank_num(dest_sq) == promo_rank)
+        {
+            ml.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
+            ml.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
+        }
+        else
+        {
+            ml.emplace_back(PAWN, orig_sq, dest_sq, captured);
+        }
+    }
+}
+
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
 move_list Position::pseudo_legal_moves() const
 {
@@ -72,18 +217,8 @@ move_list Position::pseudo_legal_moves() const
 
     // --- KING ---
 
-    // there will always be exactly 1 king
-    const bitboard kng_bb = pieces(m_stm, KING);
-    const square   kng_sq = lsb(kng_bb);
-
     // note: doesn't respect the check mask
-    bitboard kng_moves = bb_king_moves(kng_sq) & moveable_squares;
-    while (kng_moves)
-    {
-        square dest_sq  = pop_lsb(kng_moves);
-        PIECE  captured = piece_at_sq(dest_sq);
-        pl_moves.emplace_back(KING, kng_sq, dest_sq, captured);
-    }
+    generate_moves<KING>(*this, pl_moves, moveable_squares, ~BB_ZERO);
 
     // early exit if more than one checker (no other piece can move legally)
     if (check_mask == BB_ZERO)
@@ -94,181 +229,24 @@ move_list Position::pseudo_legal_moves() const
 
     // --- PAWNS ---
 
-    const bitboard pawns           = pieces(m_stm, PAWN);
-    bitboard       pawn_capturable = pieces(!m_stm);
+    generate_moves<PAWN>(*this, pl_moves, moveable_squares, check_mask);
 
-    if (is_valid(m_enp_sq))
-        pawn_capturable |= bb_from_sq(m_enp_sq);
+    generate_moves<KNIGHT>(*this, pl_moves, moveable_squares, check_mask);
 
-    const DIR pawn_push_dir       = push_dir(m_stm);
-    const int pawn_promo_rank_num = promo_rank_num(m_stm);
+    generate_moves<BISHOP>(*this, pl_moves, moveable_squares, check_mask);
 
-    bitboard p_single = bb_pawn_single_moves(pawns, occ, m_stm);
-    bitboard p_double = bb_pawn_double_moves(p_single, occ, m_stm) & check_mask;
+    generate_moves<ROOK>(*this, pl_moves, moveable_squares, check_mask);
 
-    // since double moves are generated from single moves,
-    // must be applied after
-    p_single &= check_mask;
-
-    bitboard p_att_e = bb_pawn_attacks_e(pawns, pawn_capturable, m_stm) & check_mask;
-    bitboard p_att_w = bb_pawn_attacks_w(pawns, pawn_capturable, m_stm) & check_mask;
-
-    // single pawn pushes
-    while (p_single != BB_ZERO)
-    {
-        square dest_sq = pop_lsb(p_single);
-
-        square orig_sq = dest_sq - pawn_push_dir;
-
-        if (rank_num(dest_sq) == pawn_promo_rank_num)
-        {
-            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq);
-            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq);
-            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq);
-            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq);
-        }
-        else
-        {
-            pl_moves.emplace_back(PAWN, orig_sq, dest_sq);
-        }
-    }
-
-    // double pawn pushes
-    while (p_double != BB_ZERO)
-    {
-        square dest_sq = pop_lsb(p_double);
-        square orig_sq = dest_sq - (pawn_push_dir * 2);
-        pl_moves.emplace_back(PAWN, orig_sq, dest_sq);
-    }
-
-    // pawn attacks east
-    while (p_att_e != BB_ZERO)
-    {
-        square dest_sq  = pop_lsb(p_att_e);
-        square orig_sq  = dest_sq - (pawn_push_dir + EAST);
-        PIECE  captured = piece_at_sq(dest_sq);
-
-        // en passante capture
-        if (captured == NO_PIECE)
-        {
-            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
-        }
-        // promotion capture
-        else if (rank_num(dest_sq) == pawn_promo_rank_num)
-        {
-            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
-        }
-        // all others
-        else
-        {
-            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, captured);
-        }
-    }
-
-    // pawn attacks west
-    while (p_att_w != BB_ZERO)
-    {
-        square dest_sq  = pop_lsb(p_att_w);
-        square orig_sq  = dest_sq - (pawn_push_dir + WEST);
-        PIECE  captured = piece_at_sq(dest_sq);
-
-        // en passante capture
-        if (captured == NO_PIECE)
-        {
-            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, EN_PASSANTE);
-        }
-        // promotion capture
-        else if (rank_num(dest_sq) == pawn_promo_rank_num)
-        {
-            pl_moves.emplace_back(PAWN, KNIGHT, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, BISHOP, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, ROOK, orig_sq, dest_sq, captured);
-            pl_moves.emplace_back(PAWN, QUEEN, orig_sq, dest_sq, captured);
-        }
-        // all others
-        else
-        {
-            pl_moves.emplace_back(PAWN, orig_sq, dest_sq, captured);
-        }
-    }
-
-    // --- KNIGHTS ---
-
-    bitboard kn = pieces(m_stm, KNIGHT);
-
-    while (kn != BB_ZERO)
-    {
-        square   orig_sq  = pop_lsb(kn);
-        bitboard kn_moves = bb_knight_moves(orig_sq) & moveable_squares & check_mask;
-
-        while (kn_moves != BB_ZERO)
-        {
-            square dest_sq  = pop_lsb(kn_moves);
-            PIECE  captured = piece_at_sq(dest_sq);
-            pl_moves.emplace_back(KNIGHT, orig_sq, dest_sq, captured);
-        }
-    }
-
-    // --- BISHOPS ---
-
-    bitboard bsh = pieces(m_stm, BISHOP);
-
-    while (bsh != BB_ZERO)
-    {
-        square   orig_sq   = pop_lsb(bsh);
-        bitboard bsh_moves = bb_bishop_moves(orig_sq, occ) & moveable_squares & check_mask;
-
-        while (bsh_moves != BB_ZERO)
-        {
-            square dest_sq  = pop_lsb(bsh_moves);
-            PIECE  captured = piece_at_sq(dest_sq);
-            pl_moves.emplace_back(BISHOP, orig_sq, dest_sq, captured);
-        }
-    }
-
-    // --- ROOKS ---
-
-    bitboard rk = pieces(m_stm, ROOK);
-
-    while (rk != BB_ZERO)
-    {
-        square   orig_sq  = pop_lsb(rk);
-        bitboard rk_moves = bb_rook_moves(orig_sq, occ) & moveable_squares & check_mask;
-
-        while (rk_moves != BB_ZERO)
-        {
-            square dest_sq  = pop_lsb(rk_moves);
-            PIECE  captured = piece_at_sq(dest_sq);
-            pl_moves.emplace_back(ROOK, orig_sq, dest_sq, captured);
-        }
-    }
-
-    // --- QUEENS ---
-
-    bitboard qn = pieces(m_stm, QUEEN);
-    while (qn != BB_ZERO)
-    {
-        square   orig_sq  = pop_lsb(qn);
-        bitboard qn_moves = bb_queen_moves(orig_sq, occ) & moveable_squares & check_mask;
-
-        while (qn_moves != BB_ZERO)
-        {
-            square dest_sq  = pop_lsb(qn_moves);
-            PIECE  captured = piece_at_sq(dest_sq);
-            pl_moves.emplace_back(QUEEN, orig_sq, dest_sq, captured);
-        }
-    }
+    generate_moves<QUEEN>(*this, pl_moves, moveable_squares, check_mask);
 
     // --- CASTLING ---
 
-    CASTLE_RIGHT CR_KS = m_stm ? CR_BKS : CR_WKS;
-    CASTLE_RIGHT CR_QS = m_stm ? CR_BQS : CR_WQS;
+    // there will always be exactly 1 king
+    const bitboard kng_bb = pieces(m_stm, KING);
+    const square   kng_sq = lsb(kng_bb);
 
     // kingside
-    if (!check && has_cr(CR_KS))
+    if (!check && has_cr(m_stm ? CR_BKS : CR_WKS))
     {
         // squares between rook and king must be free
         // aka the kingside rook can attack our king
@@ -285,7 +263,7 @@ move_list Position::pseudo_legal_moves() const
     }
 
     // Queenside, see comments above
-    if (!check && has_cr(CR_QS))
+    if (!check && has_cr(m_stm ? CR_BQS : CR_WQS))
     {
         int queenside_rooksq = m_stm == BLACK ? 56 : 0;
 
