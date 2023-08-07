@@ -73,34 +73,31 @@ template <PIECE piece_type> static bitboard moves_bb(const square orig_sq, const
 
 // generates pseudolegal moves of the piece type and adds them to ml
 template <PIECE piece_type>
-static void generate_moves(const Position& pos, move_list& ml, const bitboard moveable_squares, bitboard check_mask)
+void generate_moves(const Position& pos, move_list& ml, const bitboard moveable_squares, bitboard check_mask)
 {
     static_assert(piece_type != EN_PASSANTE, "Can't Generate 'En Passante' Moves\n");
 
-    if constexpr (piece_type != PAWN)
+    bitboard p_bb = pos.pieces(pos.side_to_move(), piece_type);
+
+    while (p_bb != BB_ZERO)
     {
-        bitboard p_bb = pos.pieces(pos.side_to_move(), piece_type);
+        square   orig_sq    = pop_lsb(p_bb);
+        bitboard p_moves_bb = moves_bb<piece_type>(orig_sq, pos.pieces()) & moveable_squares & check_mask;
 
-        while (p_bb != BB_ZERO)
+        while (p_moves_bb != BB_ZERO)
         {
-            square   orig_sq    = pop_lsb(p_bb);
-            bitboard p_moves_bb = moves_bb<piece_type>(orig_sq, pos.pieces()) & moveable_squares & check_mask;
+            square dest_sq = pop_lsb(p_moves_bb);
 
-            while (p_moves_bb != BB_ZERO)
-            {
-                square dest_sq = pop_lsb(p_moves_bb);
-
-                PIECE captured = pos.piece_at_sq(dest_sq);
-                ml.emplace_back(piece_type, orig_sq, dest_sq, captured);
-            }
+            PIECE captured = pos.piece_at_sq(dest_sq);
+            ml.emplace_back(piece_type, orig_sq, dest_sq, captured);
         }
-
-        return;
     }
+}
 
-    // else : piece_type is PAWN -> Pawns have several special rules (e.g. promotion)
-    // TODO : make the pawn section cleaner
-
+template <>
+void generate_moves<PAWN>(const Position& pos, move_list& ml, [[maybe_unused]] const bitboard moveable_squares,
+                          bitboard check_mask)
+{
     const bitboard pawns = pos.pieces(pos.side_to_move(), PAWN);
 
     COLOR     friendly   = pos.side_to_move();
@@ -199,20 +196,16 @@ static void generate_moves(const Position& pos, move_list& ml, const bitboard mo
 // returns amount of (pseudo legal) moves generated, and populates ml with them (ml should be at least len ~250)
 move_list Position::pseudo_legal_moves() const
 {
-    const bool check = is_check();
-
     move_list pl_moves{};
 
     // guesstimated based on average legal moves
     // https://chess.stackexchange.com/questions/23135/what-is-the-average-number-of-legal-moves-per-turn
-    pl_moves.reserve(check ? 16 : 48);
+    pl_moves.reserve(is_check() ? 16 : 48);
 
     // check mask has all bits set if not check, else only squares that could attack the king
     // it is applied to all moves, to make movegeneration faster in check, even though it's still pseudolegal
     // generation
-    const bitboard check_mask = create_check_mask(*this);
-
-    const bitboard occ              = pieces();
+    const bitboard check_mask       = create_check_mask(*this);
     const bitboard moveable_squares = ~pieces(m_stm);
 
     // --- KING ---
@@ -241,40 +234,43 @@ move_list Position::pseudo_legal_moves() const
 
     // --- CASTLING ---
 
-    // there will always be exactly 1 king
-    const bitboard kng_bb = pieces(m_stm, KING);
-    const square   kng_sq = lsb(kng_bb);
-
-    // kingside
-    if (!check && has_cr(m_stm ? CR_BKS : CR_WKS))
+    if (!is_check())
     {
-        // squares between rook and king must be free
-        // aka the kingside rook can attack our king
-        int kingside_rooksq = m_stm == BLACK ? 63 : 7;
+        // there will always be exactly 1 king
+        const bitboard kng_bb = pieces(m_stm, KING);
+        const square   kng_sq = lsb(kng_bb);
+        const bitboard occ    = pieces();
 
-        bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng_bb) > 0;
+        // kingside
+        if (has_cr(m_stm ? CR_BKS : CR_WKS))
+        {
+            // squares between rook and king must be free
+            // aka the kingside rook can attack our king
+            int kingside_rooksq = m_stm == BLACK ? 63 : 7;
 
-        // the spaces the king moves through also can't be attacked
-        bool attacked = sq_attacked(kng_sq + EAST, !m_stm) || sq_attacked(kng_sq + (EAST * 2), !m_stm);
+            bool spaces_free = (bb_rook_moves(kingside_rooksq, occ) & kng_bb) > 0;
 
-        // if these conditions met, we can castle kingside
-        if (spaces_free & !attacked)
-            pl_moves.emplace_back(KING, kng_sq, kng_sq + (EAST * 2));
+            // the spaces the king moves through also can't be attacked
+            bool attacked = sq_attacked(kng_sq + EAST, !m_stm) || sq_attacked(kng_sq + (EAST * 2), !m_stm);
+
+            // if these conditions met, we can castle kingside
+            if (spaces_free & !attacked)
+                pl_moves.emplace_back(KING, kng_sq, kng_sq + (EAST * 2));
+        }
+
+        // Queenside, see comments above
+        if (has_cr(m_stm ? CR_BQS : CR_WQS))
+        {
+            int queenside_rooksq = m_stm == BLACK ? 56 : 0;
+
+            bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng_bb) > 0;
+
+            bool attacked = sq_attacked(kng_sq + WEST, !m_stm) || sq_attacked(kng_sq + (WEST * 2), !m_stm);
+
+            if (spaces_free & !attacked)
+                pl_moves.emplace_back(KING, kng_sq, kng_sq + (WEST * 2));
+        }
     }
-
-    // Queenside, see comments above
-    if (!check && has_cr(m_stm ? CR_BQS : CR_WQS))
-    {
-        int queenside_rooksq = m_stm == BLACK ? 56 : 0;
-
-        bool spaces_free = (bb_rook_moves(queenside_rooksq, occ) & kng_bb) > 0;
-
-        bool attacked = sq_attacked(kng_sq + WEST, !m_stm) || sq_attacked(kng_sq + (WEST * 2), !m_stm);
-
-        if (spaces_free & !attacked)
-            pl_moves.emplace_back(KING, kng_sq, kng_sq + (WEST * 2));
-    }
-
     pl_moves.shrink_to_fit(); // we are done adding elements
     return pl_moves;
 }
