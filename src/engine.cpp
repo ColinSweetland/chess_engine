@@ -48,7 +48,10 @@ static void go_cmd(Position& pos, std::vector<std::string>& tokens)
         if (tokens[i] == "depth")
             depth = std::stoi(tokens[++i]);
 
-    std::cout << "bestmove " << Engine::best_move(pos, depth) << '\n';
+
+    auto bm = Engine::best_move(pos, depth);
+
+    std::cout << "bestmove " << bm << '\n';
 }
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)

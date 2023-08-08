@@ -45,7 +45,7 @@ constexpr centipawn tempo_penalty(uint8_t depth) { return -tempo_bonus(depth); }
 centipawn evaluate(Position& pos, move_list& pseudo_legal_moves);
 
 // find best move in position, using search
-ChessMove best_move(Position& pos, uint8_t depth);
+ChessMove best_move(Position& pos, int depth);
 
 } // namespace Engine
 

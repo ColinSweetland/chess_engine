@@ -130,9 +130,11 @@ centipawn piece_sq_table_eval(Position& pos)
 
 // best move finds the best move using search. Essentially a wrapper for search,
 // but needed because search returns an evaluation and we want a ChessMove
-ChessMove Engine::best_move(Position& pos, uint8_t depth)
+ChessMove Engine::best_move(Position& pos, int depth)
 {
     // We assume here that the position is not over (the engine wouldn't ask for a best move)
+
+    assert(depth >= 1);
 
     ChessMove best_move;
     centipawn best_evaluation = NEGATIVE_INF_EVAL;
@@ -157,6 +159,7 @@ ChessMove Engine::best_move(Position& pos, uint8_t depth)
         pos.unmake_last();
     }
 
+    std::cout << "info depth " << depth << " score cp " << best_evaluation << "\n";
     assert(!best_move.is_null());
     return best_move;
 }
