@@ -4,6 +4,6 @@
 
 using Engine::centipawn;
 
-centipawn negamax_search(Position& pos, uint8_t depth, centipawn alpha = Engine::NEGATIVE_INF_EVAL,
-                         centipawn beta = Engine::POSITIVE_INF_EVAL);
+centipawn negamax_search(Position& pos, uint8_t depth, uint32_t& nodes_searched,
+                         centipawn alpha = Engine::NEGATIVE_INF_EVAL, centipawn beta = Engine::POSITIVE_INF_EVAL);
 #endif // SEARCH_INCL

@@ -39,13 +39,22 @@ constexpr centipawn tempo_bonus(uint8_t depth) { return depth * 5; }
 // likewise: avoid checkmate at earlier depths, even if it's guarunteed: could help draw on time
 constexpr centipawn tempo_penalty(uint8_t depth) { return -tempo_bonus(depth); }
 
+struct go_cmd_info
+{
+    ChessMove best_move{};
+
+    uint32_t nodes_searched = 0;
+
+    centipawn score = NEGATIVE_INF_EVAL;
+};
+
 // full evaluation of the position, relative to side moving (needed for negamax search).
 // move_list param helps us to see if position is checkmate
 // tempo bonus/penalty NOT included, must be added if desired
 centipawn evaluate(Position& pos, move_list& pseudo_legal_moves);
 
 // find best move in position, using search
-ChessMove best_move(Position& pos, int depth);
+go_cmd_info best_move(Position& pos, int depth);
 
 } // namespace Engine
 

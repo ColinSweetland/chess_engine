@@ -6,7 +6,7 @@
 
 #include <cstdint>
 
-using Engine::centipawn;
+using namespace Engine;
 
 static centipawn piece_value_eval(Position& pos)
 {
@@ -17,9 +17,9 @@ static centipawn piece_value_eval(Position& pos)
     for (int p = PAWN; p < KING; p++)
     {
         // side to move (positive) piece score
-        eval += Engine::piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(stm, static_cast<PIECE>(p)));
+        eval += piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(stm, static_cast<PIECE>(p)));
         // enemy (negative) piece score
-        eval -= Engine::piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(!stm, static_cast<PIECE>(p)));
+        eval -= piece_to_cp_score(static_cast<PIECE>(p)) * popcnt(pos.pieces(!stm, static_cast<PIECE>(p)));
     }
 
     return eval;
@@ -130,14 +130,13 @@ centipawn piece_sq_table_eval(Position& pos)
 
 // best move finds the best move using search. Essentially a wrapper for search,
 // but needed because search returns an evaluation and we want a ChessMove
-ChessMove Engine::best_move(Position& pos, int depth)
+go_cmd_info Engine::best_move(Position& pos, int depth)
 {
     // We assume here that the position is not over (the engine wouldn't ask for a best move)
 
     assert(depth >= 1);
 
-    ChessMove best_move;
-    centipawn best_evaluation = NEGATIVE_INF_EVAL;
+    go_cmd_info info = {};
 
     move_list psl = pos.pseudo_legal_moves();
 
@@ -148,20 +147,19 @@ ChessMove Engine::best_move(Position& pos, int depth)
         if (!pos.try_make_move(move))
             continue;
 
-        centipawn move_eval = -negamax_search(pos, depth - 1);
+        centipawn move_eval = -negamax_search(pos, depth - 1, info.nodes_searched);
 
-        if (move_eval > best_evaluation)
+        if (move_eval > info.score)
         {
-            best_move       = move;
-            best_evaluation = move_eval;
+            info.best_move = move;
+            info.score     = move_eval;
         }
 
         pos.unmake_last();
     }
 
-    std::cout << "info depth " << depth << " score cp " << best_evaluation << "\n";
-    assert(!best_move.is_null());
-    return best_move;
+    assert(!info.best_move.is_null());
+    return info;
 }
 
 // evaluate RELATIVE TO SIDE TO MOVE

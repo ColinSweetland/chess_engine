@@ -8,14 +8,14 @@
 using Engine::centipawn;
 
 // https://en.wikipedia.org/wiki/Negamax
-centipawn negamax_search(Position& pos, uint8_t depth, centipawn alpha, centipawn beta)
+centipawn negamax_search(Position& pos, uint8_t depth, uint32_t& nodes_searched, centipawn alpha, centipawn beta)
 {
     // generate pseudolegal moves upfront,
     // we need to generate them in any case to check if the position is checkmate
     move_list psl_moves = pos.pseudo_legal_moves();
 
     centipawn node_eval = Engine::NEGATIVE_INF_EVAL;
-
+    nodes_searched += 1;
     // note: this statement doesn't cover every game over case.
     // in many stalemate/checkmate cases, we will reach to the end of this function,
     // so don't assume the game isn't over now
@@ -34,7 +34,7 @@ centipawn negamax_search(Position& pos, uint8_t depth, centipawn alpha, centipaw
         if (!pos.try_make_move(move))
             continue;
 
-        node_eval = std::max(node_eval, -negamax_search(pos, depth - 1, -beta, -alpha));
+        node_eval = std::max(node_eval, -negamax_search(pos, depth - 1, nodes_searched, -beta, -alpha));
 
         // unmake move
         pos.unmake_last();

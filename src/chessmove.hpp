@@ -82,6 +82,4 @@ using move_list = std::vector<ChessMove>;
 
 void order_moves(move_list& ml);
 
-using scored_move = std::pair<ChessMove, int32_t>;
-
 #endif

@@ -1,5 +1,7 @@
 #include <array>
+#include <bits/chrono.h>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <sstream>
 #include <string>
@@ -35,12 +37,15 @@ static void uci_cmd()
               << "uciok\n";
 }
 
-const uint8_t DEFAULT_SEARCH_DEPTH = 4;
+const int DEFAULT_SEARCH_DEPTH = 4;
 
 // go -> find best move
 static void go_cmd(Position& pos, std::vector<std::string>& tokens)
 {
-    uint8_t depth = DEFAULT_SEARCH_DEPTH;
+    // start timer as soon as possible
+    const auto start = std::chrono::steady_clock::now();
+
+    int depth = DEFAULT_SEARCH_DEPTH;
 
     // search for 'depth' subcommand (others not supported right now)
     // stop 1 short of the end because depth command needs an argument
@@ -48,10 +53,17 @@ static void go_cmd(Position& pos, std::vector<std::string>& tokens)
         if (tokens[i] == "depth")
             depth = std::stoi(tokens[++i]);
 
+    auto info = Engine::best_move(pos, depth);
 
-    auto bm = Engine::best_move(pos, depth);
+    // done search
+    const auto end        = std::chrono::steady_clock::now();
+    const auto searched_s = std::chrono::duration<double>(end - start);
 
-    std::cout << "bestmove " << bm << '\n';
+    std::cout << "info depth " << depth << " score cp " << info.score << " time "
+              << static_cast<int>(searched_s.count() * 1000.0) << " nodes " << info.nodes_searched << " nps "
+              << static_cast<int>(info.nodes_searched / searched_s.count()) << "\n";
+
+    std::cout << "bestmove " << info.best_move << '\n';
 }
 
 // Create a chessmove on pos with a string representing a move (in format UCI uses)
