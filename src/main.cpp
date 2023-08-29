@@ -8,11 +8,13 @@
 
 #include "engine.hpp"
 #include "movegen.hpp"
+#include "zobrist.hpp"
 
 void init(void)
 {
     init_rook_table();
     init_bishop_table();
+    Zobrist::init();
 }
 
 int main(void)

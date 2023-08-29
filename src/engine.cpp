@@ -14,6 +14,8 @@
 #include "movegen.hpp"
 #include "perft.hpp"
 #include "position.hpp"
+#include "search.hpp"
+#include "transposition.hpp"
 
 static bool interactive = false;
 
@@ -53,7 +55,7 @@ static void go_cmd(Position& pos, std::vector<std::string>& tokens)
         if (tokens[i] == "depth")
             depth = std::stoi(tokens[++i]);
 
-    auto info = Engine::best_move(pos, depth);
+    auto info = Search::negamax_root(pos, depth);
 
     // done search
     const auto end        = std::chrono::steady_clock::now();
@@ -158,6 +160,9 @@ void Engine::uci_loop()
     if (interactive)
         send_info("running interactively");
 
+    // initialize transposition table to empty
+    tt::init();
+
     for (bool quit = false; !quit;)
     {
         // get one line (command) and store it into input buf
@@ -194,9 +199,9 @@ void Engine::uci_loop()
             position_cmd(pos, cmd_tokens);
 
         // ucinewgame -> next position command will be a new game
-        //            -> reset necessary state (e.g. transposition table) (we have none right now)
+        //            -> reset necessary state (e.g. transposition table)
         else if (cmd_tokens[0] == "ucinewgame")
-            send_info("got command 'ucinewgame' but nothing to do");
+            tt::init();
 
         else if (cmd_tokens[0] == "go")
             go_cmd(pos, cmd_tokens);
@@ -247,6 +252,10 @@ void Engine::uci_loop()
             order_moves(moves);
             for (auto m : moves)
                 m.dump_info();
+        }
+        else if (cmd_tokens[0] == "zhash")
+        {
+            pos.dump_zhash();
         }
         else if (cmd_tokens[0] == "perft")
         {

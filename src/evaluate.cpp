@@ -128,40 +128,6 @@ centipawn piece_sq_table_eval(Position& pos)
     return eval;
 }
 
-// best move finds the best move using search. Essentially a wrapper for search,
-// but needed because search returns an evaluation and we want a ChessMove
-go_cmd_info Engine::best_move(Position& pos, int depth)
-{
-    // We assume here that the position is not over (the engine wouldn't ask for a best move)
-
-    assert(depth >= 1);
-
-    go_cmd_info info = {};
-
-    move_list psl = pos.pseudo_legal_moves();
-
-    order_moves(psl);
-
-    for (ChessMove move : psl)
-    {
-        if (!pos.try_make_move(move))
-            continue;
-
-        centipawn move_eval = -negamax_search(pos, depth - 1, info.nodes_searched);
-
-        if (move_eval > info.score)
-        {
-            info.best_move = move;
-            info.score     = move_eval;
-        }
-
-        pos.unmake_last();
-    }
-
-    assert(!info.best_move.is_null());
-    return info;
-}
-
 // evaluate RELATIVE TO SIDE TO MOVE
 centipawn Engine::evaluate(Position& pos, move_list& pseudo_legal_moves)
 {

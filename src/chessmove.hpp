@@ -37,6 +37,13 @@ class ChessMove
     {
     }
 
+    inline bool operator==(const ChessMove other) const
+    {
+        return get_moved_piece() == other.get_moved_piece() && get_after_move_piece() == other.get_after_move_piece()
+            && get_orig() == other.get_orig() && get_dest() == other.get_dest()
+            && get_captured_piece() == other.get_captured_piece();
+    }
+
     // getters
     inline square get_orig() const { return m_orig_sq; }
     inline square get_dest() const { return m_dest_sq; }
@@ -72,14 +79,12 @@ class ChessMove
 
     // prints out moveinfo, useful for debugging
     void dump_info() const;
-
-    int score_for_ordering() const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ChessMove& m) { return out << m.to_str(); }
 
 using move_list = std::vector<ChessMove>;
 
-void order_moves(move_list& ml);
+void order_moves(move_list& ml, const ChessMove& tt_best_move = {});
 
 #endif

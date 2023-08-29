@@ -4,6 +4,7 @@
 #include "./types/bitboard.hpp"
 #include "./types/pieces.hpp"
 #include "chessmove.hpp"
+#include "zobrist.hpp"
 
 #include <array>
 #include <iostream>
@@ -30,7 +31,7 @@ struct state_info
 
 class Position
 {
-  private:
+  public:
     enum CASTLE_RIGHT
     {
         CR_WQS = 1,
@@ -44,6 +45,7 @@ class Position
         CR_ANY = CR_WQS | CR_WKS | CR_BQS | CR_BKS
     };
 
+  private:
     // bitboard for each piece, index with COLOR then PIECE
     bitboard m_piece_bbs[2][7];
 
@@ -53,6 +55,8 @@ class Position
 
     // all historical state info
     std::vector<state_info> m_state_info_stack{};
+
+    zhash_t m_curr_zhash;
 
     unsigned int m_castle_r;
     unsigned int m_rev_move_count;
@@ -106,6 +110,8 @@ class Position
 
     const ChessMove& last_move() const { return m_state_info_stack.back().prev_move; }
 
+    zhash_t zhash() const { return m_curr_zhash; }
+
     void make_move(const ChessMove c);
     bool try_make_move(const ChessMove c);
 
@@ -119,6 +125,8 @@ class Position
     std::string FEN() const;
 
     void dump_move_history() const;
+
+    void dump_zhash() const;
 
     friend std::ostream& operator<<(std::ostream& out, const Position& p);
 };

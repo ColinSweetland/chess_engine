@@ -3,28 +3,11 @@
 
 #include <algorithm>
 #include <iostream>
-
-void ChessMove::dump_info() const
-{
-    std::cout << "MOVE: " << to_str();
-    std::cout << "\tMOV P: " << piece_to_str(get_moved_piece());
-    std::cout << "\tCAP P: " << piece_to_str(get_captured_piece());
-    std::cout << "\t\tPRO P: " << piece_to_str(get_promo_piece());
-    std::cout << "\t\tCASTL: " << (is_castle() ? "T" : "F");
-    std::cout << "\tSCORE: " << score_for_ordering() << "\n";
-}
+#include <limits>
 
 constexpr int CAPTURE_VALUE   = 40;
 constexpr int PROMOTION_VALUE = 80;
 constexpr int CASTLE_VALUE    = 20;
-
-// good test positions:
-
-// contains pawns capturing every piece, a promotion, and a castle move
-// 1b4k1/P2r4/2P1b3/1q1P1n2/P3P1p1/5P2/6P1/R3K2R w KQ - 0 1
-
-// contains a lot of pieces of varying value attacking a lot of pieces of varying value
-// k7/8/8/q1r5/1P2N3/6q1/3q1B2/2Q4K w - - 0 1
 
 // the "score" for the move, a better score means the move will be explored earlier
 // Current scheme:
@@ -34,36 +17,57 @@ constexpr int CASTLE_VALUE    = 20;
 // - castle moves
 // - all other moves
 
-int ChessMove::score_for_ordering() const
+int score_for_ordering(const ChessMove& move, const ChessMove& tt_best_move)
 {
     int score = 0;
 
+    if (move == tt_best_move)
+    {
+        // std::cout << "move matches tt best!!!\n";
+        return std::numeric_limits<int>::max();
+    }
+
     // castles can't be promos or captures so immediate return
-    if (is_castle())
+    if (move.is_castle())
         return CASTLE_VALUE;
 
-    if (is_promo())
+    if (move.is_promo())
     {
         score += PROMOTION_VALUE;
 
         // make promotion piece much more important than capture piece for promo captures
-        score += m_aftermove_piece * 10;
+        score += move.get_after_move_piece() * 10;
     }
 
-    if (is_capture())
+    if (move.is_capture())
     {
         score += CAPTURE_VALUE;
 
         // order first by capture piece (best piece first)
         // then by moved piece (worst piece first)
-        score += m_cap_piece * 5;
-        score -= m_moved_piece;
+        score += move.get_captured_piece() * 5;
+        score -= move.get_moved_piece();
     }
 
     return score;
 }
 
-void order_moves(move_list& ml)
+// NOTE: this may be slow, since I think sort will have to call score_for_ordering multiple times for the same move.
+// may be a place to improve.
+
+void order_moves(move_list& ml, const ChessMove& tt_best_move)
 {
-    std::sort(ml.begin(), ml.end(), [](auto m1, auto m2) { return m1.score_for_ordering() > m2.score_for_ordering(); });
+    std::sort(ml.begin(), ml.end(), [&](auto m1, auto m2) {
+        return score_for_ordering(m1, tt_best_move) > score_for_ordering(m2, tt_best_move);
+    });
+}
+
+void ChessMove::dump_info() const
+{
+    std::cout << "MOVE: " << to_str();
+    std::cout << "\tMOV P: " << piece_to_str(get_moved_piece());
+    std::cout << "\tCAP P: " << piece_to_str(get_captured_piece());
+    std::cout << "\t\tPRO P: " << piece_to_str(get_promo_piece());
+    std::cout << "\t\tCASTL: " << (is_castle() ? "T" : "F");
+    std::cout << "\tSCORE: " << score_for_ordering(*this, ChessMove{}) << "\n";
 }

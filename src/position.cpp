@@ -9,6 +9,8 @@
 #include "movegen.hpp"
 #include "position.hpp"
 #include "types/pieces.hpp"
+#include "util.hpp"
+#include "zobrist.hpp"
 
 // formats castlerights to string like 'KQkq' or 'Kkq' or '-'
 std::string Position::castle_right_str() const
@@ -86,6 +88,8 @@ void Position::dump_move_history() const
         std::cout << st_info.prev_move << '\n';
 }
 
+void Position::dump_zhash() const { std::cout << util::pretty_int(m_curr_zhash) << '\n'; }
+
 void Position::remove_piece(COLOR c, PIECE p, square sq)
 {
     assert(bb_is_set_at_sq(m_color_bbs[c], sq));
@@ -93,6 +97,8 @@ void Position::remove_piece(COLOR c, PIECE p, square sq)
     assert(p != NO_PIECE);
     bb_unset_sq(m_color_bbs[c], sq);
     bb_unset_sq(m_piece_bbs[c][p], sq);
+
+    m_curr_zhash ^= Zobrist::color_piece_on_sq(c, p, sq);
 }
 
 void Position::place_piece(COLOR c, PIECE p, square sq)
@@ -105,6 +111,8 @@ void Position::place_piece(COLOR c, PIECE p, square sq)
     assert(is_valid(sq));
     bb_set_sq(m_color_bbs[c], sq);
     bb_set_sq(m_piece_bbs[c][p], sq);
+
+    m_curr_zhash ^= Zobrist::color_piece_on_sq(c, p, sq);
 }
 
 void Position::move_piece(COLOR c, PIECE p, square orig, square dest)
@@ -217,9 +225,17 @@ void Position::make_move(ChessMove move)
     // increase full moves (only if black)
     m_full_moves += m_stm;
 
+    m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
+
+    if (is_valid(m_enp_sq))
+        m_curr_zhash ^= Zobrist::ep_square(m_enp_sq);
+
     // en passante is set if it's a double push, else cleared
     if (move.is_double_push())
+    {
         m_enp_sq = move.get_orig() + push_dir(m_stm);
+        m_curr_zhash ^= Zobrist::ep_square(m_enp_sq);
+    }
     else
         m_enp_sq = -1;
 
@@ -310,6 +326,9 @@ void Position::make_move(ChessMove move)
 
     // now it's the other side's turn
     m_stm = !m_stm;
+    m_curr_zhash ^= Zobrist::black_to_move();
+
+    m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
 
     // *** update state_info ***
 
@@ -323,13 +342,22 @@ void Position::unmake_last()
 
     const ChessMove move = st_info.prev_move;
 
+    m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
+    if (is_valid(m_enp_sq))
+        m_curr_zhash ^= Zobrist::ep_square(m_enp_sq);
+
     // restore unrestorable data
     m_enp_sq         = st_info.prev_enp_sq;
     m_rev_move_count = st_info.prev_rev_move_count;
     m_castle_r       = st_info.prev_castle_r;
 
+    m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
+    if (is_valid(m_enp_sq))
+        m_curr_zhash ^= Zobrist::ep_square(m_enp_sq);
+
     // swap stm back to who made the move
     m_stm = !m_stm;
+    m_curr_zhash ^= Zobrist::black_to_move();
 
     // if the move was made by black, decrement
     m_full_moves -= m_stm;
@@ -393,7 +421,7 @@ bool Position::try_make_move(const ChessMove pseudo_legal)
 // Forsyth Edwards Notation is a common string based representation of a chess position
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0}, m_castle_r{0}
+Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0}, m_curr_zhash{0}, m_castle_r{0}
 {
     std::istringstream fen{fenstr};
 
@@ -452,7 +480,20 @@ Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0},
 
     fen >> fc;
 
-    m_stm = fc == 'b' ? BLACK : WHITE;
+    if (fc == 'b')
+    {
+        m_stm = BLACK;
+        m_curr_zhash ^= Zobrist::black_to_move();
+    }
+    else if (fc == 'w')
+    {
+        m_stm = WHITE;
+    }
+    else
+    {
+        std::cerr << "FEN error: found '" << fc << "' when side to move was expected ('w' or 'b')\n";
+        exit(1);
+    }
 
     // ---- castling rights ----
     // '-' indicates nobody can castle
@@ -483,7 +524,9 @@ Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0},
                 give_cr(CR_BQS);
                 break;
             default:
-                assert(false);
+                std::cerr << "FEN error: Found unexpected char '" << fc << "'"
+                          << " in castle rights\n";
+                exit(1);
                 break;
             }
 
@@ -494,6 +537,8 @@ Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0},
         fen >> std::skipws;
     }
 
+    m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
+
     // ---- EN PASSANTE TARGET SQUARE ----
     // '-' indicates no enpassante available
 
@@ -502,13 +547,13 @@ Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0},
     if (fc != '-')
     {
         // FILE LETTER
-        square enp_sq = fc - 'a';
+        m_enp_sq = fc - 'a';
 
         // RANK NUM
         fen >> fc;
-        enp_sq += (fc - '1') * 8;
+        m_enp_sq += (fc - '1') * 8;
 
-        m_enp_sq = enp_sq;
+        m_curr_zhash ^= Zobrist::ep_square(m_enp_sq);
     }
     else
     {
