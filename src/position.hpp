@@ -22,6 +22,10 @@ struct state_info
 
     bitboard checkers_bb{0};
 
+    // is the prev move repeatable for purpose of repitition draw
+    bool    prev_move_repeatable{true};
+    zhash_t pos_zhash;
+
     // need a constructor to use emplace_back
     state_info(ChessMove cm, unsigned int rmc, unsigned int pcr, square pesq)
         : prev_move(cm), prev_rev_move_count(rmc), prev_castle_r(pcr), prev_enp_sq(pesq)
@@ -90,6 +94,8 @@ class Position
     // if the side to move has legal moves, draw, else checkmated
     inline bool has_been_50_reversible_full_moves() { return m_rev_move_count >= 100; }
 
+    bool is_rep_draw() const;
+
     inline const unsigned int& full_move_count() const { return m_full_moves; }
     inline const unsigned int& rev_move_count() const { return m_rev_move_count; }
     inline square              en_passante_sq() const { return m_enp_sq; }
@@ -124,9 +130,14 @@ class Position
 
     std::string FEN() const;
 
+    // prints info about every move that has been made on the position
     void dump_move_history() const;
 
+    // prints out the zhash currently
     void dump_zhash() const;
+
+    // prints out all zhashes since last move and if the last move caused a rep draw
+    void dump_rep_info() const;
 
     friend std::ostream& operator<<(std::ostream& out, const Position& p);
 };

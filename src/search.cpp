@@ -54,6 +54,10 @@ search_info Search::negamax_root(Position& pos, int depth)
 // https://en.wikipedia.org/wiki/Negamax
 centipawn negamax_search(Position& pos, uint8_t depth, uint32_t& nodes_searched, centipawn alpha, centipawn beta)
 {
+    // rep draw is a special case: always draw, we don't care about the tt or anything else
+    if (pos.is_rep_draw())
+        return Engine::DRAW_EVAL;
+
     // probe tt to see if we've seen this position
     tt::entry entry     = tt::lookup(pos.zhash());
     centipawn alphaOrig = alpha;

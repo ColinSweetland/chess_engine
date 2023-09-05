@@ -82,6 +82,26 @@ std::ostream& operator<<(std::ostream& out, const Position& p)
     return out;
 }
 
+bool Position::is_rep_draw() const
+{
+    auto info_stack_sz = m_state_info_stack.size();
+
+    // number of times current pos is repeated in history
+    int number_reps = 0;
+
+    for (size_t i = 2; i <= info_stack_sz; i++)
+    {
+        if (i != 1
+            && m_state_info_stack[info_stack_sz - i].pos_zhash == m_state_info_stack[info_stack_sz - 1].pos_zhash)
+            number_reps++;
+
+        if (!m_state_info_stack[info_stack_sz - i].prev_move_repeatable || number_reps == 3)
+            break;
+    }
+
+    return number_reps >= 3;
+}
+
 void Position::dump_move_history() const
 {
     for (auto st_info : m_state_info_stack)
@@ -89,6 +109,28 @@ void Position::dump_move_history() const
 }
 
 void Position::dump_zhash() const { std::cout << util::pretty_int(m_curr_zhash) << '\n'; }
+
+void Position::dump_rep_info() const
+{
+    auto info_stack_sz = m_state_info_stack.size();
+
+    // number of times current pos is repeated in history
+    int number_reps = 0;
+
+    for (size_t i = 1; i <= info_stack_sz; i++)
+    {
+        std::cout << static_cast<unsigned int>(m_state_info_stack[info_stack_sz - i].pos_zhash) << '\n';
+
+        if (i != 1
+            && m_state_info_stack[info_stack_sz - i].pos_zhash == m_state_info_stack[info_stack_sz - 1].pos_zhash)
+            number_reps++;
+
+        if (!m_state_info_stack[info_stack_sz - i].prev_move_repeatable)
+            break;
+    }
+
+    std::cout << "The current position was repeated " << number_reps << " times\n";
+};
 
 void Position::remove_piece(COLOR c, PIECE p, square sq)
 {
@@ -243,7 +285,8 @@ void Position::make_move(ChessMove move)
     {
     // moving pawns is not reversible
     case PAWN:
-        m_rev_move_count = 0;
+        m_rev_move_count                               = 0;
+        m_state_info_stack.back().prev_move_repeatable = false;
         break;
 
     // moving king always unsets castle rights for moving side
@@ -299,7 +342,8 @@ void Position::make_move(ChessMove move)
         remove_piece(!m_stm, cap_piece, cap_square);
 
         // captures are not reversible
-        m_rev_move_count = 0;
+        m_rev_move_count                               = 0;
+        m_state_info_stack.back().prev_move_repeatable = false;
     }
     else if (move.is_castle())
     {
@@ -319,6 +363,9 @@ void Position::make_move(ChessMove move)
 
         // we only have to move the rook, since we will move the king
         move_piece(m_stm, ROOK, rook_sq, rook_dest);
+
+        // castling is not repeatable for the purpose of repitition draw, but NOT for the 50 move rule (why?)
+        m_state_info_stack.back().prev_move_repeatable = false;
     }
 
     // finally move the moved piece
@@ -331,8 +378,13 @@ void Position::make_move(ChessMove move)
     m_curr_zhash ^= Zobrist::castle_right(m_castle_r);
 
     // *** update state_info ***
-
+    m_state_info_stack.back().pos_zhash = m_curr_zhash;
     update_checkers_bb();
+
+    if (m_state_info_stack.back().prev_castle_r != m_castle_r)
+    {
+        m_state_info_stack.back().prev_move_repeatable = false;
+    }
 }
 
 void Position::unmake_last()
@@ -568,6 +620,7 @@ Position::Position(const std::string fenstr) : m_piece_bbs{{0}}, m_color_bbs{0},
 
     // now we must add a state info for the startpos (are these values okay?)
     m_state_info_stack.emplace_back(ChessMove{}, 0, m_castle_r, BB_ZERO);
+    m_state_info_stack.back().pos_zhash = m_curr_zhash;
     update_checkers_bb();
 }
 

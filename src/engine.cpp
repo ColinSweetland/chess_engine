@@ -253,6 +253,10 @@ void Engine::uci_loop()
             for (auto m : moves)
                 m.dump_info();
         }
+        else if (cmd_tokens[0] == "repinfo")
+        {
+            pos.dump_rep_info();
+        }
         else if (cmd_tokens[0] == "zhash")
         {
             pos.dump_zhash();
